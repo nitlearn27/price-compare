@@ -1,0 +1,53 @@
+# ── Secrets ──────────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Python (backend) ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.log
+
+# ── Node / Frontend ──────────────────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+dist/
+dist-ssr/
+.vite/
+*.local
+
+# ── Playwright / test artefacts ──────────────────────────────────────────────
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# ── Editor / OS ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Claude Code workspace ────────────────────────────────────────────────────
+.claude/

@@ -1,0 +1,38 @@
+{
+  "totalSize": 2,
+  "done": true,
+  "records": [
+    {
+      "attributes": { "type": "Product__c" },
+      "Id": "a001A00000XxYyZQAV",
+      "Name": "P-101",
+      "Title__c": "OnePlus 12 5G",
+      "Source__c": "Reliance Digital",
+      "Current_Price__c": 64999,
+      "Original_Price__c": null,
+      "Discount__c": null,
+      "Rating__c": null,
+      "Review_Count__c": null,
+      "Rank__c": null,
+      "Product_URL__c": null,
+      "Image_URL__c": null,
+      "Availability__c": null
+    },
+    {
+      "attributes": { "type": "Product__c" },
+      "Id": "a001A00000XxYyAQAV",
+      "Name": "P-102",
+      "Title__c": "OnePlus 12",
+      "Source__c": "Reliance Digital",
+      "Current_Price__c": 59999,
+      "Original_Price__c": 69999,
+      "Discount__c": null,
+      "Rating__c": "4.0",
+      "Review_Count__c": 80,
+      "Rank__c": null,
+      "Product_URL__c": "https://reliancedigital.in/oneplus-12",
+      "Image_URL__c": null,
+      "Availability__c": "In Stock"
+    }
+  ]
+}
