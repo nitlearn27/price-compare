@@ -1,0 +1,38 @@
+# Render Blueprint — single Docker web service serving both API and React frontend.
+#
+# SETUP STEPS:
+# 1. Push this repo to GitHub.
+# 2. Render dashboard → New → Blueprint → connect your repo.
+# 3. Set the env vars marked sync:false in the Render dashboard after first deploy:
+#      SF_TOKEN_URL, SF_CLIENT_ID, SF_CLIENT_SECRET, OPENROUTER_API_KEY
+#    CORS_ALLOW_ORIGINS can be set to your Render service URL or left as "*"
+#    since frontend and API share the same origin — CORS is only needed for
+#    local Vite dev (port 5173).
+
+services:
+  - type: web
+    name: price-compare
+    runtime: docker
+    plan: free
+    healthCheckPath: /docs
+    envVars:
+      - key: SF_TOKEN_URL
+        sync: false
+      - key: SF_CLIENT_ID
+        sync: false
+      - key: SF_CLIENT_SECRET
+        sync: false
+      - key: SF_API_VERSION
+        value: "60.0"
+      - key: SF_QUERY_LIMIT
+        value: "200"
+      - key: SF_RESULTS_PER_SOURCE
+        value: "3"
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: "openai/gpt-oss-120b"
+      - key: CORS_ALLOW_ORIGINS
+        value: "*"
+      - key: LOG_LEVEL
+        value: "INFO"

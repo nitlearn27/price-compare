@@ -1,0 +1,22 @@
+# Backend — dev/test artifacts
+backend/.venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.pytest_cache/
+backend/.coverage
+backend/.ruff_cache/
+backend/*.egg-info/
+backend/tests/
+backend/.env
+
+# Frontend — build inputs not needed in Docker
+frontend/node_modules/
+frontend/dist/
+frontend/dev.log
+frontend/tests/
+frontend/coverage/
+frontend/playwright-report/
+
+# Root
+.env
+.git/
