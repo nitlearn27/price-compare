@@ -32,6 +32,7 @@ class ProductListing(BaseModel):
     rank: int | None = None
     product_url: str | None = None
     image_url: str | None = None
+    availability: str | None = None
     last_ordered_date: str | None = None
     times_purchased: int | None = None
     buy_suggestion: BuySuggestion | None = None

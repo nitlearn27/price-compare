@@ -114,6 +114,16 @@ def test_normalize_title_fallback_to_name():
     assert listing.title == record["Name"]
 
 
+def test_normalize_passes_through_availability():
+    listing = _normalize(make_record(Availability__c="In Stock"))
+    assert listing.availability == "In Stock"
+
+
+def test_normalize_availability_none_when_absent():
+    listing = _normalize(make_record(Availability__c=None))
+    assert listing.availability is None
+
+
 # ── rank_and_group ────────────────────────────────────────────────────────────
 
 

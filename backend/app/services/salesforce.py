@@ -108,7 +108,7 @@ class SalesforceClient:
         return (
             "SELECT Id, Name, title__c, source__c, current_price__c, original_price__c, "
             "discount__c, rating__c, review_count__c, rank__c, product_url__c, "
-            "image_url__c, last_ordered_date__c, number_of_times_purchased__c "
+            "image_url__c, availability__c, last_ordered_date__c, number_of_times_purchased__c "
             "FROM Grocery_Product__c "
             f"WHERE {where_clause} AND source__c != null AND source__c != '' "
             "ORDER BY source__c ASC, rating__c DESC NULLS LAST, "

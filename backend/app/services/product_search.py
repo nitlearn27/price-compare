@@ -120,6 +120,7 @@ def _normalize(record: dict, today: date | None = None) -> ProductListing:
         rank=_safe_int(_ci_get(record, "Rank__c")),
         product_url=_ci_get(record, "Product_URL__c"),
         image_url=_ci_get(record, "Image_URL__c"),
+        availability=_ci_get(record, "Availability__c"),
         last_ordered_date=str(last_ordered_raw)[:10] if last_ordered_raw else None,
         times_purchased=times_purchased,
         buy_suggestion=buy_suggestion,
