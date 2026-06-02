@@ -50,3 +50,21 @@ class ChatResponse(BaseModel):
 
 class ProductSearchResponse(BaseModel):
     results: list[ProductListing]
+
+
+class RecommendationRequest(BaseModel):
+    # Optional free-text preference; blank is coerced to the default by the router.
+    user_input: str = "Give recommendations"
+
+
+class RecommendationItem(BaseModel):
+    product_name: str
+    product_url: str | None = None
+    price: float | None = None
+    reasoning: str | None = None
+    rating: str | None = None
+
+
+class RecommendationResponse(BaseModel):
+    insight_message: str
+    recommendations: list[RecommendationItem]

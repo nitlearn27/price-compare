@@ -48,6 +48,23 @@ export interface ProductSearchResponse {
   results: ProductListing[];
 }
 
+export interface RecommendationRequest {
+  user_input: string;
+}
+
+export interface RecommendationItem {
+  product_name: string;
+  product_url: string | null;
+  price: number | null;
+  reasoning: string | null;
+  rating: string | null;
+}
+
+export interface RecommendationResponse {
+  insight_message: string;
+  recommendations: RecommendationItem[];
+}
+
 /** A UI message extends ChatMessage with an id for React keys. */
 export interface UIMessage extends ChatMessage {
   id: string;

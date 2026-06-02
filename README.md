@@ -352,6 +352,7 @@ All config via environment variables. See `.env.example` for the canonical list.
 | `OPENROUTER_MODEL`      | OpenRouter model id                                  | `openai/gpt-oss-120b`                                    |
 | `CORS_ALLOW_ORIGINS`    | Comma-separated origins for CORS                     | `http://localhost:5173`                                  |
 | `LOG_LEVEL`             | Python log level                                     | `INFO`                                                   |
+| `RECOMMENDATION_API_URL`| "Next purchase" recommendation engine endpoint       | `https://insight-generation-production.up.railway.app/api/insights/next-purchase` |
 
 ---
 

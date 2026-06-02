@@ -1,11 +1,17 @@
+import { useState } from "react";
+import { Sparkles } from "lucide-react";
 import { useChat } from "../hooks/useChat";
+import { useRecommendations } from "../hooks/useRecommendations";
 import { ChatWindow } from "../components/chat/ChatWindow";
 import { ComparisonTable } from "../components/results/ComparisonTable";
+import { RecommendationsDrawer } from "../components/recommendations/RecommendationsDrawer";
 import { STRINGS } from "../lib/strings";
 
 export default function App() {
   const { messages, input, setInput, isLoading, sendMessage, submitExample, productSearch } =
     useChat();
+  const recommendations = useRecommendations();
+  const [recsOpen, setRecsOpen] = useState(false);
 
   const resultCount = productSearch.results.length;
   const storeCount = new Set(productSearch.results.map((r) => r.source)).size;
@@ -25,8 +31,16 @@ export default function App() {
             Smart price comparison · powered by AI
           </p>
         </div>
-        <div className="ml-auto hidden sm:flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 text-[10px] text-slate-600 tracking-widest uppercase font-semibold px-3 py-1.5 rounded-full border border-slate-200 bg-white">
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setRecsOpen(true)}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-white px-3.5 py-1.5 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 glow-indigo hover:from-indigo-600 hover:to-violet-700 transition"
+          >
+            <Sparkles size={14} aria-hidden="true" />
+            {STRINGS.recommendationsButton}
+          </button>
+          <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] text-slate-600 tracking-widest uppercase font-semibold px-3 py-1.5 rounded-full border border-slate-200 bg-white">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/40 animate-pulse" />
             Live
           </span>
@@ -97,6 +111,12 @@ export default function App() {
           />
         </section>
       </main>
+
+      <RecommendationsDrawer
+        open={recsOpen}
+        onClose={() => setRecsOpen(false)}
+        state={recommendations}
+      />
     </div>
   );
 }

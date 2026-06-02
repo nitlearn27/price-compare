@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     refresh_flipkart_url: str = ""
     refresh_orders: int = 2  # POST body: {"orders": <n>}
 
+    # Recommendation engine ("next purchase" insights) — external service
+    recommendation_api_url: str = (
+        "https://insight-generation-production.up.railway.app/api/insights/next-purchase"
+    )
+
     # App
     cors_allow_origins: str = "http://localhost:5173"
     log_level: str = "INFO"

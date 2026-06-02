@@ -3,6 +3,8 @@ import type {
   ChatResponse,
   ProductQuery,
   ProductSearchResponse,
+  RecommendationRequest,
+  RecommendationResponse,
 } from "./types";
 
 const BASE = "/api";
@@ -32,4 +34,7 @@ export const api = {
   chat: (req: ChatRequest): Promise<ChatResponse> => post("/chat", req),
   searchProducts: (query: ProductQuery): Promise<ProductSearchResponse> =>
     post("/products/search", query),
+  getRecommendations: (
+    req: RecommendationRequest,
+  ): Promise<RecommendationResponse> => post("/recommendations/next-purchase", req),
 };

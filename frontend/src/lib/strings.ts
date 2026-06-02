@@ -7,9 +7,9 @@ export const STRINGS = {
   chatEmptyHeading: "What are you looking for?",
   chatEmptySubtext: "Try one of these to get started:",
   chatExamplePrompts: [
-    "Find me a gaming laptop under ₹80,000",
-    "Compare OnePlus 12 5G prices",
-    "Best iPhone 15 deals on Flipkart and Amazon",
+    "Compare Nandini cow milk prices",
+    "Find Aashirvaad Atta 5kg",
+    "Best Tata Salt 1kg deals on Amazon",
   ],
 
   typingIndicatorLabel: "Searching...",
@@ -38,4 +38,19 @@ export const STRINGS = {
   suggestionRestock: "Time to restock",
   suggestionRecent: "Recently bought",
   suggestionNew: "New to you",
+
+  recommendationsButton: "Recommendations",
+  recommendationsTitle: "Next Purchase",
+  recommendationsSubtitle: "Smart picks based on your buying habits",
+  recommendationsInputLabel: "Preference (optional)",
+  recommendationsInputPlaceholder: "e.g. only from Flipkart",
+  recommendationsDefaultInput: "Give recommendations",
+  recommendationsSubmit: "Get recommendations",
+  recommendationsInsightLabel: "Insight",
+  recommendationsLoading: "Finding your next purchase…",
+  recommendationsEmptyHeading: "No recommendations yet",
+  recommendationsEmptySubtext: "Add a preference or just get our top picks.",
+  recommendationsErrorHeading: "Couldn't load recommendations",
+  recommendationsClose: "Close recommendations",
+  recommendationsRatingUnavailable: "Not available",
 } as const;

@@ -36,3 +36,14 @@ services:
         value: "*"
       - key: LOG_LEVEL
         value: "INFO"
+      # Recommendation engine ("next purchase" insights). Defaults to the
+      # production Railway endpoint; override here to point at another deployment.
+      - key: RECOMMENDATION_API_URL
+        value: "https://insight-generation-production.up.railway.app/api/insights/next-purchase"
+      # Product refresh triggers (optional — set in the dashboard if used).
+      - key: REFRESH_AMAZON_URL
+        sync: false
+      - key: REFRESH_FLIPKART_URL
+        sync: false
+      - key: REFRESH_ORDERS
+        value: "2"
