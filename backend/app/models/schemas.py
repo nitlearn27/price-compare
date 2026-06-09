@@ -63,6 +63,7 @@ class RecommendationItem(BaseModel):
     price: float | None = None
     reasoning: str | None = None
     rating: str | None = None
+    highlights: list[str] = []
 
 
 class RecommendationResponse(BaseModel):

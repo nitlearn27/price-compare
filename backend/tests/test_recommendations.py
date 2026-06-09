@@ -15,6 +15,7 @@ SAMPLE_RESPONSE = {
             "price": 324.0,
             "reasoning": "Last purchased 9 days ago; now on sale.",
             "rating": "Not available",
+            "highlights": ["On sale now", "Daily staple", "Bought 4x"],
         },
         {
             "product_name": "Nandini Homogenised Cow Milk",
@@ -38,6 +39,9 @@ async def test_fetch_next_purchase_parses_response():
     assert result.insight_message == SAMPLE_RESPONSE["insight_message"]
     assert len(result.recommendations) == 2
     assert result.recommendations[0].product_name.startswith("Aashirvaad")
+    assert result.recommendations[0].highlights == ["On sale now", "Daily staple", "Bought 4x"]
+    # Missing highlights default to an empty list rather than failing validation.
+    assert result.recommendations[1].highlights == []
     assert result.recommendations[1].price == 26.0
 
 
