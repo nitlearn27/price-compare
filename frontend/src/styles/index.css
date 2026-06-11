@@ -2,15 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Night-sky palette */
+  --sky-top: #33518f;
+  --sky-mid: #2a4a8f;
+  --sky-low: #0a1f5c;
+  --sky-deep: #06154a;
+  --glass-fill: rgba(255, 255, 255, 0.07);
+  --glass-strong-fill: rgba(10, 24, 70, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --accent-glow: rgba(59, 130, 246, 0.45);
+}
+
 @layer base {
   * {
     box-sizing: border-box;
   }
   html, body {
-    background-color: #f8fafc;
+    background-color: var(--sky-deep);
   }
   body {
-    @apply text-slate-800 font-sans antialiased;
+    @apply text-slate-100 font-sans antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     letter-spacing: -0.011em;
     position: relative;
@@ -18,10 +30,10 @@
 }
 
 @layer utilities {
-  /* Soft scrollbar for light surfaces */
+  /* Soft scrollbar for dark surfaces */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: rgba(15, 23, 42, 0.18) transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
@@ -31,45 +43,50 @@
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: rgba(15, 23, 42, 0.15);
+    background-color: rgba(255, 255, 255, 0.18);
     border-radius: 3px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(15, 23, 42, 0.28);
+    background-color: rgba(255, 255, 255, 0.3);
   }
 
-  /* Professional light background — slate-50 base with very faint cool wash */
+  /* Night-sky background — navy gradient, soft horizon glow, faint stars */
   .app-bg {
-    background-color: #f8fafc;
+    background-color: var(--sky-deep);
     background-image:
-      radial-gradient(ellipse 60% 50% at 15% 0%, rgba(99, 102, 241, 0.06) 0%, transparent 60%),
-      radial-gradient(ellipse 55% 45% at 90% 5%, rgba(56, 189, 248, 0.05) 0%, transparent 60%),
-      radial-gradient(ellipse 50% 50% at 100% 100%, rgba(168, 85, 247, 0.04) 0%, transparent 60%);
+      radial-gradient(1px 1px at 25% 20%, rgba(255, 255, 255, 0.5) 0, transparent 1.5px),
+      radial-gradient(1px 1px at 70% 45%, rgba(255, 255, 255, 0.4) 0, transparent 1.5px),
+      radial-gradient(1.5px 1.5px at 45% 70%, rgba(255, 255, 255, 0.35) 0, transparent 2px),
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(120, 150, 220, 0.35) 0%, transparent 70%),
+      linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 28%, var(--sky-low) 70%, var(--sky-deep) 100%);
+    background-size: 190px 190px, 270px 270px, 350px 350px, 100% 100%, 100% 100%;
   }
 
-  /* Frosted glass — light surface with soft tint */
+  /* Frosted glass — translucent dark-blue surface */
   .glass {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(20px) saturate(120%);
+    -webkit-backdrop-filter: blur(20px) saturate(120%);
   }
 
   .glass-strong {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(24px) saturate(160%);
-    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    background: var(--glass-strong-fill);
+    backdrop-filter: blur(24px) saturate(120%);
+    -webkit-backdrop-filter: blur(24px) saturate(120%);
   }
 
-  /* Clean card surface */
+  /* Frosted card surface */
   .glass-panel {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    background: var(--glass-fill);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 
   /* Brand accent shadow for primary actions */
   .glow-indigo {
-    box-shadow: 0 8px 24px -8px rgba(79, 70, 229, 0.35), 0 0 0 1px rgba(79, 70, 229, 0.12);
+    box-shadow: 0 8px 24px -8px var(--accent-glow), 0 0 0 1px rgba(255, 255, 255, 0.12);
   }
 }
 
@@ -90,7 +107,7 @@
 }
 
 .shimmer {
-  background: linear-gradient(90deg, rgba(15, 23, 42, 0.05) 25%, rgba(15, 23, 42, 0.10) 50%, rgba(15, 23, 42, 0.05) 75%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.06) 25%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0.06) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }

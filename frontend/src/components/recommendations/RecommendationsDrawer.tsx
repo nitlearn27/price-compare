@@ -23,11 +23,11 @@ function formatINR(amount: number | null): string {
 
 /** Vibrant palette cycled across a card's highlight chips. */
 const HIGHLIGHT_COLORS = [
-  { text: "#047857", bg: "#ECFDF5", border: "#A7F3D0" }, // emerald
-  { text: "#B45309", bg: "#FFFBEB", border: "#FDE68A" }, // amber
-  { text: "#0369A1", bg: "#F0F9FF", border: "#BAE6FD" }, // sky
-  { text: "#6D28D9", bg: "#F5F3FF", border: "#DDD6FE" }, // violet
-  { text: "#BE123C", bg: "#FFF1F2", border: "#FECDD3" }, // rose
+  { text: "#6EE7B7", bg: "#10B9811F", border: "#10B98140" }, // emerald
+  { text: "#FCD34D", bg: "#F59E0B1F", border: "#F59E0B40" }, // amber
+  { text: "#7DD3FC", bg: "#0EA5E91F", border: "#0EA5E940" }, // sky
+  { text: "#C4B5FD", bg: "#8B5CF61F", border: "#8B5CF640" }, // violet
+  { text: "#FDA4AF", bg: "#F43F5E1F", border: "#F43F5E40" }, // rose
 ];
 
 /** Infer a store from the product URL host so cards can show a source chip. */
@@ -82,7 +82,7 @@ export function RecommendationsDrawer({ open, onClose, state }: Props) {
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-30 bg-slate-900/30 backdrop-blur-[2px] transition-opacity duration-300 ${
+        className={`fixed inset-0 z-30 bg-black/50 backdrop-blur-[2px] transition-opacity duration-300 ${
           open ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         onClick={onClose}
@@ -96,20 +96,20 @@ export function RecommendationsDrawer({ open, onClose, state }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={STRINGS.recommendationsTitle}
-        className={`fixed top-0 right-0 z-40 h-full w-full sm:w-[420px] glass-strong border-l border-slate-200 shadow-2xl flex flex-col outline-none transition-transform duration-300 ease-out ${
+        className={`fixed top-0 right-0 z-40 h-full w-full sm:w-[420px] glass-strong border-l border-white/10 shadow-2xl flex flex-col outline-none transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {/* Header */}
-        <header className="px-5 py-4 border-b border-slate-200 flex items-center gap-3 flex-shrink-0">
-          <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/20 flex-shrink-0">
+        <header className="px-5 py-4 border-b border-white/10 flex items-center gap-3 flex-shrink-0">
+          <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20 flex-shrink-0">
             <Sparkles size={16} className="text-white" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-[15px] font-semibold text-slate-900 tracking-tight leading-none">
+            <h2 className="text-[15px] font-semibold text-white tracking-tight leading-none">
               {STRINGS.recommendationsTitle}
             </h2>
-            <p className="text-[11px] text-slate-500 mt-1 leading-none">
+            <p className="text-[11px] text-white/60 mt-1 leading-none">
               {STRINGS.recommendationsSubtitle}
             </p>
           </div>
@@ -117,17 +117,17 @@ export function RecommendationsDrawer({ open, onClose, state }: Props) {
             type="button"
             onClick={onClose}
             aria-label={STRINGS.recommendationsClose}
-            className="ml-auto w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0"
+            className="ml-auto w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
           >
             <X size={18} aria-hidden="true" />
           </button>
         </header>
 
         {/* Preference controls */}
-        <div className="px-5 py-4 border-b border-slate-200 flex-shrink-0 bg-white/50">
+        <div className="px-5 py-4 border-b border-white/10 flex-shrink-0 bg-white/[0.04]">
           <label
             htmlFor="rec-pref"
-            className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2"
+            className="block text-[11px] font-semibold text-white/60 uppercase tracking-wider mb-2"
           >
             {STRINGS.recommendationsInputLabel}
           </label>
@@ -141,14 +141,14 @@ export function RecommendationsDrawer({ open, onClose, state }: Props) {
                 if (e.key === "Enter") submit();
               }}
               placeholder={STRINGS.recommendationsInputPlaceholder}
-              className="flex-1 min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 transition"
+              className="flex-1 min-w-0 rounded-xl border border-white/10 bg-white/[0.08] px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-sky-400/40 focus:border-sky-400/50 transition"
             />
             <button
               type="button"
               onClick={submit}
               disabled={state.loading}
               aria-label={STRINGS.recommendationsSubmit}
-              className="flex-shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium text-white bg-gradient-to-br from-indigo-500 to-violet-600 glow-indigo hover:from-indigo-600 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="flex-shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium text-white bg-gradient-to-br from-blue-500 to-indigo-600 glow-indigo hover:from-blue-400 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               <Send size={14} aria-hidden="true" />
             </button>
@@ -164,8 +164,8 @@ export function RecommendationsDrawer({ open, onClose, state }: Props) {
                   className="text-[11px] font-medium rounded-full px-2.5 py-1 border transition hover:shadow-sm"
                   style={{
                     color: theme.accent,
-                    borderColor: `${theme.accent}40`,
-                    background: `${theme.accent}0F`,
+                    borderColor: `${theme.accent}66`,
+                    background: `${theme.accent}26`,
                   }}
                 >
                   {theme.label}
@@ -199,14 +199,14 @@ export function RecommendationsDrawer({ open, onClose, state }: Props) {
 
 function InsightBanner({ message }: { message: string }) {
   return (
-    <div className="relative rounded-2xl p-4 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100">
+    <div className="relative rounded-2xl p-4 bg-gradient-to-br from-sky-400/15 to-indigo-500/15 border border-white/10">
       <div className="flex items-center gap-1.5 mb-1.5">
-        <Sparkles size={13} className="text-indigo-500" aria-hidden="true" />
-        <span className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wider">
+        <Sparkles size={13} className="text-amber-300" aria-hidden="true" />
+        <span className="text-[10px] font-semibold text-sky-300 uppercase tracking-wider">
           {STRINGS.recommendationsInsightLabel}
         </span>
       </div>
-      <p className="text-sm text-slate-700 leading-relaxed">{message}</p>
+      <p className="text-sm text-white/85 leading-relaxed">{message}</p>
     </div>
   );
 }
@@ -219,12 +219,12 @@ function RecommendationCard({ item }: { item: RecommendationItem }) {
 
   return (
     <div
-      className="glass-panel rounded-2xl p-4 hover:shadow-md transition-shadow"
+      className="glass-panel rounded-3xl p-4 hover:shadow-md transition-shadow"
       style={theme ? { borderLeft: `3px solid ${theme.accent}` } : undefined}
     >
       <div className="flex items-start justify-between gap-2">
         <p
-          className="font-medium text-slate-900 text-sm leading-snug line-clamp-2"
+          className="font-medium text-white text-sm leading-snug line-clamp-2"
           title={item.product_name}
         >
           {item.product_name}
@@ -232,7 +232,7 @@ function RecommendationCard({ item }: { item: RecommendationItem }) {
         {theme && (
           <span
             className="flex-shrink-0 text-[10px] font-semibold rounded-full px-2 py-0.5"
-            style={{ color: theme.accent, background: `${theme.accent}14` }}
+            style={{ color: theme.accent, background: `${theme.accent}2E` }}
           >
             {theme.label}
           </span>
@@ -240,14 +240,14 @@ function RecommendationCard({ item }: { item: RecommendationItem }) {
       </div>
 
       <div className="flex items-center gap-3 mt-2">
-        <span className="text-base font-semibold text-slate-900">{formatINR(item.price)}</span>
+        <span className="text-base font-semibold text-white">{formatINR(item.price)}</span>
         {showRating && (
-          <span className="text-xs text-amber-600 font-medium">★ {item.rating}</span>
+          <span className="text-xs text-amber-400 font-medium">★ {item.rating}</span>
         )}
       </div>
 
       {item.reasoning && (
-        <p className="text-xs text-slate-500 leading-relaxed mt-2">{item.reasoning}</p>
+        <p className="text-xs text-white/60 leading-relaxed mt-2">{item.reasoning}</p>
       )}
 
       {item.highlights?.length > 0 && (
@@ -275,7 +275,7 @@ function RecommendationCard({ item }: { item: RecommendationItem }) {
             href={item.product_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+            className="inline-flex items-center gap-1 text-xs font-medium text-sky-300 hover:text-sky-200 transition-colors"
             aria-label={`View ${item.product_name}`}
           >
             {STRINGS.viewButtonLabel}
@@ -291,7 +291,7 @@ function LoadingState() {
   return (
     <div className="space-y-4" aria-label={STRINGS.recommendationsLoading} role="status">
       {Array.from({ length: 3 }, (_, i) => (
-        <div key={i} className="glass-panel rounded-2xl p-4">
+        <div key={i} className="glass-panel rounded-3xl p-4">
           <div className="shimmer h-4 rounded w-3/4 mb-3" />
           <div className="shimmer h-4 rounded w-1/4 mb-3" />
           <div className="shimmer h-3 rounded w-full mb-1.5" />
@@ -305,13 +305,13 @@ function LoadingState() {
 function ErrorState({ detail }: { detail: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center fade-up">
-      <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center mb-4 shadow-sm">
+      <div className="w-16 h-16 rounded-2xl bg-rose-500/15 border border-rose-400/20 flex items-center justify-center mb-4 shadow-sm">
         <span className="text-3xl" role="img" aria-label="error">
           ⚠️
         </span>
       </div>
-      <p className="text-red-700 font-medium text-sm">{STRINGS.recommendationsErrorHeading}</p>
-      <p className="text-slate-500 text-xs mt-1.5">{detail}</p>
+      <p className="text-rose-300 font-medium text-sm">{STRINGS.recommendationsErrorHeading}</p>
+      <p className="text-white/60 text-xs mt-1.5">{detail}</p>
     </div>
   );
 }
@@ -319,11 +319,11 @@ function ErrorState({ detail }: { detail: string }) {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center fade-up">
-      <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center mb-4 shadow-sm">
-        <Sparkles size={26} className="text-slate-300" aria-hidden="true" />
+      <div className="w-16 h-16 rounded-2xl bg-white/[0.06] border border-white/10 flex items-center justify-center mb-4 shadow-sm">
+        <Sparkles size={26} className="text-white/30" aria-hidden="true" />
       </div>
-      <p className="text-slate-800 font-medium text-sm">{STRINGS.recommendationsEmptyHeading}</p>
-      <p className="text-slate-500 text-xs mt-1.5">{STRINGS.recommendationsEmptySubtext}</p>
+      <p className="text-white font-medium text-sm">{STRINGS.recommendationsEmptyHeading}</p>
+      <p className="text-white/60 text-xs mt-1.5">{STRINGS.recommendationsEmptySubtext}</p>
     </div>
   );
 }

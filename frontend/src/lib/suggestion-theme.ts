@@ -12,31 +12,31 @@ export interface SuggestionTheme {
 const SUGGESTION_THEMES: Record<BuySuggestion, SuggestionTheme> = {
   frequent: {
     label: STRINGS.suggestionFrequent,
-    bg: "#ECFDF5", // emerald-50
-    fg: "#047857", // emerald-700
-    ring: "#A7F3D0", // emerald-200
-    dot: "#10B981", // emerald-500
+    bg: "#10B98126", // emerald-500 @ 15%
+    fg: "#6EE7B7", // emerald-300
+    ring: "#10B98155", // emerald-500 @ 33%
+    dot: "#34D399", // emerald-400
   },
   restock: {
     label: STRINGS.suggestionRestock,
-    bg: "#EEF2FF", // indigo-50
-    fg: "#4338CA", // indigo-700
-    ring: "#C7D2FE", // indigo-200
-    dot: "#6366F1", // indigo-500
+    bg: "#818CF826", // indigo-400 @ 15%
+    fg: "#A5B4FC", // indigo-300
+    ring: "#818CF855", // indigo-400 @ 33%
+    dot: "#818CF8", // indigo-400
   },
   recent: {
     label: STRINGS.suggestionRecent,
-    bg: "#F1F5F9", // slate-100
-    fg: "#475569", // slate-600
-    ring: "#CBD5E1", // slate-300
+    bg: "#FFFFFF14", // white @ 8%
+    fg: "#CBD5E1", // slate-300
+    ring: "#FFFFFF33", // white @ 20%
     dot: "#94A3B8", // slate-400
   },
   new: {
     label: STRINGS.suggestionNew,
-    bg: "#FFFBEB", // amber-50
-    fg: "#92400E", // amber-800
-    ring: "#FDE68A", // amber-200
-    dot: "#F59E0B", // amber-500
+    bg: "#F59E0B26", // amber-500 @ 15%
+    fg: "#FCD34D", // amber-300
+    ring: "#F59E0B55", // amber-500 @ 33%
+    dot: "#FBBF24", // amber-400
   },
 };
 

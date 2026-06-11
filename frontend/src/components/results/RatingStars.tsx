@@ -5,10 +5,10 @@ interface Props {
 }
 
 export function RatingStars({ rating }: Props) {
-  if (!rating) return <span className="text-slate-400 text-xs">—</span>;
+  if (!rating) return <span className="text-white/40 text-xs">—</span>;
 
   const numeric = parseFloat(rating);
-  if (isNaN(numeric)) return <span className="text-slate-500 text-xs">{rating}</span>;
+  if (isNaN(numeric)) return <span className="text-white/60 text-xs">{rating}</span>;
 
   const full = Math.floor(numeric);
   const partial = numeric - full;
@@ -22,13 +22,13 @@ export function RatingStars({ rating }: Props) {
           <Star
             key={i}
             size={11}
-            className={filled || isPartial ? "text-amber-500" : "text-slate-300"}
+            className={filled || isPartial ? "text-amber-400" : "text-white/25"}
             fill={filled ? "currentColor" : isPartial ? "currentColor" : "none"}
             aria-hidden="true"
           />
         );
       })}
-      <span className="ml-1 text-xs text-slate-600">{numeric.toFixed(1)}</span>
+      <span className="ml-1 text-xs text-white/70">{numeric.toFixed(1)}</span>
     </span>
   );
 }

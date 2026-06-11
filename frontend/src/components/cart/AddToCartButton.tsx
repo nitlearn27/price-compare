@@ -24,8 +24,8 @@ export function AddToCartButton({ name, source, size = "sm" }: Props) {
       onClick={() => (inCart ? remove(name) : add({ name, source }))}
       className={`inline-flex items-center gap-1 ${pad} rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
         inCart
-          ? "text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 hover:bg-emerald-100"
-          : "text-indigo-600 bg-indigo-50 ring-1 ring-indigo-200 hover:bg-indigo-100"
+          ? "text-emerald-300 bg-emerald-400/15 ring-1 ring-emerald-400/30 hover:bg-emerald-400/25"
+          : "text-sky-300 bg-sky-400/15 ring-1 ring-sky-400/30 hover:bg-sky-400/25"
       }`}
     >
       {inCart ? (

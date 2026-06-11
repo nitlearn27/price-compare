@@ -385,7 +385,7 @@ App is "ready" when:
 ```bash
 # Backend
 cd backend
-python -m venv .venv && .venv\Scripts\activate    # or source .venv/bin/activate
+source .venv/bin/activate   # or source .venv/bin/activate
 pip install -e ".[dev]"
 uvicorn app.main:app --reload                     # http://127.0.0.1:8000
 

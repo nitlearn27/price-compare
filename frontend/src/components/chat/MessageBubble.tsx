@@ -20,7 +20,7 @@ export function MessageBubble({ message }: Props) {
       {/* Avatar */}
       {!isUser && (
         <div
-          className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 shadow-sm"
+          className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 shadow-sm"
           aria-hidden="true"
         >
           AI
@@ -32,15 +32,15 @@ export function MessageBubble({ message }: Props) {
         className={clsx(
           "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
           isUser
-            ? "bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-br-sm shadow-md shadow-indigo-500/20"
-            : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm shadow-sm"
+            ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-br-sm shadow-md shadow-blue-500/20"
+            : "bg-white/[0.08] border border-white/10 text-white/90 rounded-bl-sm shadow-sm backdrop-blur-sm"
         )}
         aria-label={isUser ? "Your message" : `${STRINGS.assistantName} message`}
       >
         {isUser ? (
           <p className="whitespace-pre-wrap">{message.content}</p>
         ) : (
-          <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-slate">
+          <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-invert">
             <ReactMarkdown>{message.content}</ReactMarkdown>
           </div>
         )}
@@ -52,14 +52,14 @@ export function MessageBubble({ message }: Props) {
 export function TypingIndicator() {
   return (
     <div className="flex gap-2 items-end" aria-label={STRINGS.typingIndicatorLabel} role="status">
-      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 shadow-sm">
+      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 shadow-sm">
         AI
       </div>
-      <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
+      <div className="bg-white/[0.08] border border-white/10 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm backdrop-blur-sm">
         <div className="flex gap-1 items-center h-4">
-          <span className="typing-dot w-2 h-2 rounded-full bg-slate-400" />
-          <span className="typing-dot w-2 h-2 rounded-full bg-slate-400" />
-          <span className="typing-dot w-2 h-2 rounded-full bg-slate-400" />
+          <span className="typing-dot w-2 h-2 rounded-full bg-white/50" />
+          <span className="typing-dot w-2 h-2 rounded-full bg-white/50" />
+          <span className="typing-dot w-2 h-2 rounded-full bg-white/50" />
         </div>
       </div>
     </div>

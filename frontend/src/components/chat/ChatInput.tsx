@@ -36,7 +36,7 @@ export function ChatInput({ value, onChange, onSubmit, disabled }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex items-end gap-2.5 border-t border-slate-200 bg-white/80 backdrop-blur-md p-4"
+      className="flex items-end gap-2.5 border-t border-white/10 bg-white/[0.04] backdrop-blur-md p-4"
     >
       <textarea
         ref={textareaRef}
@@ -48,9 +48,9 @@ export function ChatInput({ value, onChange, onSubmit, disabled }: Props) {
         disabled={disabled}
         rows={1}
         className={clsx(
-          "flex-1 resize-none rounded-2xl border border-slate-200 px-4 py-2.5 bg-white",
-          "text-sm text-slate-900 placeholder:text-slate-400 caret-indigo-500",
-          "focus:outline-none focus:ring-2 focus:ring-indigo-500/35 focus:border-indigo-400",
+          "flex-1 resize-none rounded-2xl border border-white/10 px-4 py-2.5 bg-white/[0.08]",
+          "text-sm text-white placeholder:text-white/40 caret-sky-400",
+          "focus:outline-none focus:ring-2 focus:ring-sky-400/40 focus:border-sky-400/50",
           "transition-all duration-150 overflow-hidden shadow-sm",
           disabled && "opacity-60 cursor-not-allowed"
         )}
@@ -61,9 +61,9 @@ export function ChatInput({ value, onChange, onSubmit, disabled }: Props) {
         disabled={disabled || !value.trim()}
         className={clsx(
           "w-10 h-10 flex items-center justify-center rounded-2xl flex-shrink-0",
-          "bg-gradient-to-br from-indigo-500 to-violet-600 text-white transition-all duration-200",
-          "hover:shadow-lg hover:shadow-indigo-500/30 hover:scale-105 active:scale-95",
-          "focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:ring-offset-2 focus:ring-offset-white",
+          "bg-gradient-to-br from-blue-500 to-indigo-600 text-white transition-all duration-200",
+          "hover:shadow-lg hover:shadow-blue-500/30 hover:scale-105 active:scale-95",
+          "focus:outline-none focus:ring-2 focus:ring-sky-400/50 focus:ring-offset-2 focus:ring-offset-transparent",
           (disabled || !value.trim()) && "opacity-40 cursor-not-allowed hover:scale-100 hover:shadow-none"
         )}
         aria-label={STRINGS.chatSendLabel}

@@ -30,7 +30,7 @@ export function CartDrawer({ open, onClose }: Props) {
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-30 bg-slate-900/30 backdrop-blur-[2px] transition-opacity duration-300 ${
+        className={`fixed inset-0 z-30 bg-black/50 backdrop-blur-[2px] transition-opacity duration-300 ${
           open ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         onClick={onClose}
@@ -44,20 +44,20 @@ export function CartDrawer({ open, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={STRINGS.cartTitle}
-        className={`fixed top-0 right-0 z-40 h-full w-full sm:w-[420px] glass-strong border-l border-slate-200 shadow-2xl flex flex-col outline-none transition-transform duration-300 ease-out ${
+        className={`fixed top-0 right-0 z-40 h-full w-full sm:w-[420px] glass-strong border-l border-white/10 shadow-2xl flex flex-col outline-none transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {/* Header */}
-        <header className="px-5 py-4 border-b border-slate-200 flex items-center gap-3 flex-shrink-0">
-          <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/20 flex-shrink-0">
+        <header className="px-5 py-4 border-b border-white/10 flex items-center gap-3 flex-shrink-0">
+          <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20 flex-shrink-0">
             <ShoppingCart size={16} className="text-white" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-[15px] font-semibold text-slate-900 tracking-tight leading-none">
+            <h2 className="text-[15px] font-semibold text-white tracking-tight leading-none">
               {STRINGS.cartTitle}
             </h2>
-            <p className="text-[11px] text-slate-500 mt-1 leading-none">
+            <p className="text-[11px] text-white/60 mt-1 leading-none">
               {count} {count === 1 ? "item" : "items"}
             </p>
           </div>
@@ -65,7 +65,7 @@ export function CartDrawer({ open, onClose }: Props) {
             type="button"
             onClick={onClose}
             aria-label={STRINGS.cartClose}
-            className="ml-auto w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0"
+            className="ml-auto w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
           >
             <X size={18} aria-hidden="true" />
           </button>
@@ -86,13 +86,13 @@ export function CartDrawer({ open, onClose }: Props) {
                     style={theme ? { borderLeft: `3px solid ${theme.accent}` } : undefined}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-slate-900 truncate" title={item.name}>
+                      <p className="text-sm font-medium text-white truncate" title={item.name}>
                         {item.name}
                       </p>
                       {theme && (
                         <span
                           className="inline-block mt-1 text-[10px] font-semibold rounded-full px-2 py-0.5"
-                          style={{ color: theme.accent, background: `${theme.accent}14` }}
+                          style={{ color: theme.accent, background: `${theme.accent}2E` }}
                         >
                           {theme.label}
                         </span>
@@ -102,7 +102,7 @@ export function CartDrawer({ open, onClose }: Props) {
                       type="button"
                       onClick={() => remove(item.name)}
                       aria-label={`${STRINGS.removeFromCart}: ${item.name}`}
-                      className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                      className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-rose-300 hover:bg-rose-500/15 transition-colors"
                     >
                       <Trash2 size={15} aria-hidden="true" />
                     </button>
@@ -114,11 +114,11 @@ export function CartDrawer({ open, onClose }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-slate-200 flex-shrink-0 bg-white/50 space-y-2.5">
+        <div className="px-5 py-4 border-t border-white/10 flex-shrink-0 bg-white/[0.04] space-y-2.5">
           {success && (
             <p
               role="status"
-              className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 rounded-lg px-3 py-2"
+              className="flex items-center gap-1.5 text-xs font-medium text-emerald-300 bg-emerald-400/15 ring-1 ring-emerald-400/30 rounded-lg px-3 py-2"
             >
               <Check size={14} aria-hidden="true" />
               {success}
@@ -127,7 +127,7 @@ export function CartDrawer({ open, onClose }: Props) {
           {error && (
             <p
               role="alert"
-              className="text-xs font-medium text-red-700 bg-red-50 ring-1 ring-red-200 rounded-lg px-3 py-2"
+              className="text-xs font-medium text-rose-300 bg-rose-500/15 ring-1 ring-rose-400/30 rounded-lg px-3 py-2"
             >
               {STRINGS.cartSubmitError}: {error}
             </p>
@@ -136,7 +136,7 @@ export function CartDrawer({ open, onClose }: Props) {
             type="button"
             onClick={checkout}
             disabled={submitting || items.length === 0}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-br from-indigo-500 to-violet-600 glow-indigo hover:from-indigo-600 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-br from-blue-500 to-indigo-600 glow-indigo hover:from-blue-400 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
             {submitting ? (
               <>
@@ -159,11 +159,11 @@ export function CartDrawer({ open, onClose }: Props) {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center fade-up">
-      <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center mb-4 shadow-sm">
-        <ShoppingCart size={26} className="text-slate-300" aria-hidden="true" />
+      <div className="w-16 h-16 rounded-2xl bg-white/[0.06] border border-white/10 flex items-center justify-center mb-4 shadow-sm">
+        <ShoppingCart size={26} className="text-white/30" aria-hidden="true" />
       </div>
-      <p className="text-slate-800 font-medium text-sm">{STRINGS.cartEmptyHeading}</p>
-      <p className="text-slate-500 text-xs mt-1.5">{STRINGS.cartEmptySubtext}</p>
+      <p className="text-white font-medium text-sm">{STRINGS.cartEmptyHeading}</p>
+      <p className="text-white/60 text-xs mt-1.5">{STRINGS.cartEmptySubtext}</p>
     </div>
   );
 }

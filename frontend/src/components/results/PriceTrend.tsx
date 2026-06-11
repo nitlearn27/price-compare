@@ -22,7 +22,7 @@ function formatDelta(amount: number): string {
 export function PriceTrend({ current, lastPaid }: Props) {
   if (current === null || lastPaid === null || current === lastPaid) {
     return (
-      <span className="text-slate-300 text-xs" aria-label="No price change">
+      <span className="text-white/25 text-xs" aria-label="No price change">
         —
       </span>
     );
@@ -33,7 +33,7 @@ export function PriceTrend({ current, lastPaid }: Props) {
   if (current > lastPaid) {
     return (
       <span
-        className="inline-flex items-center gap-0.5 text-rose-600 text-xs font-medium whitespace-nowrap"
+        className="inline-flex items-center gap-0.5 text-rose-400 text-xs font-medium whitespace-nowrap"
         aria-label={`Up ${delta} versus last paid`}
       >
         <ArrowUp size={13} aria-hidden="true" />
@@ -44,7 +44,7 @@ export function PriceTrend({ current, lastPaid }: Props) {
 
   return (
     <span
-      className="inline-flex items-center gap-0.5 text-emerald-600 text-xs font-medium whitespace-nowrap"
+      className="inline-flex items-center gap-0.5 text-emerald-400 text-xs font-medium whitespace-nowrap"
       aria-label={`Down ${delta} versus last paid`}
     >
       <ArrowDown size={13} aria-hidden="true" />

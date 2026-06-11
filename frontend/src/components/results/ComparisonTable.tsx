@@ -61,7 +61,7 @@ function SkeletonRow() {
 
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
+    <div className="rounded-3xl border border-white/10 bg-white/[0.07] backdrop-blur-sm p-3.5">
       <div className="flex gap-3">
         <div className="shimmer w-12 h-12 rounded-lg flex-shrink-0" />
         <div className="flex-1 space-y-2">
@@ -77,11 +77,11 @@ function SkeletonCard() {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center fade-up">
-      <div className="w-20 h-20 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center mb-4 shadow-sm">
+      <div className="w-20 h-20 rounded-3xl bg-white/[0.06] border border-white/10 flex items-center justify-center mb-4 shadow-sm">
         <span className="text-4xl" role="img" aria-label="search">🔍</span>
       </div>
-      <p className="text-slate-800 font-medium text-base">{STRINGS.tableEmptyHeading}</p>
-      <p className="text-slate-500 text-sm mt-1.5">{STRINGS.tableEmptySubtext}</p>
+      <p className="text-white font-medium text-base">{STRINGS.tableEmptyHeading}</p>
+      <p className="text-white/60 text-sm mt-1.5">{STRINGS.tableEmptySubtext}</p>
     </div>
   );
 }
@@ -89,11 +89,11 @@ function EmptyState() {
 function ErrorState({ detail }: { detail: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center fade-up">
-      <div className="w-20 h-20 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center mb-4 shadow-sm">
+      <div className="w-20 h-20 rounded-3xl bg-rose-500/15 border border-rose-400/20 flex items-center justify-center mb-4 shadow-sm">
         <span className="text-4xl" role="img" aria-label="error">⚠️</span>
       </div>
-      <p className="text-red-700 font-medium text-base">{STRINGS.tableErrorHeading}</p>
-      <p className="text-slate-500 text-sm mt-1.5">{detail}</p>
+      <p className="text-rose-300 font-medium text-base">{STRINGS.tableErrorHeading}</p>
+      <p className="text-white/60 text-sm mt-1.5">{detail}</p>
     </div>
   );
 }
@@ -140,7 +140,7 @@ export function ComparisonTable({ results, loading, error }: Props) {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-white">
+    <div className="h-full flex flex-col overflow-hidden bg-transparent">
       <div className="flex-1 overflow-auto scrollbar-thin">{body}</div>
     </div>
   );
@@ -164,16 +164,16 @@ function TableHeader() {
     <thead
       className="sticky top-0 z-10"
       style={{
-        background: "rgba(248, 250, 252, 0.95)",
-        backdropFilter: "blur(12px) saturate(160%)",
-        WebkitBackdropFilter: "blur(12px) saturate(160%)",
+        background: "rgba(10, 24, 70, 0.90)",
+        backdropFilter: "blur(12px) saturate(120%)",
+        WebkitBackdropFilter: "blur(12px) saturate(120%)",
       }}
     >
-      <tr className="border-b border-slate-200">
+      <tr className="border-b border-white/10">
         {columns.map(({ label, align }, i) => (
           <th
             key={i}
-            className={`px-4 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap text-${align}`}
+            className={`px-4 py-3 text-[10px] font-semibold text-white/50 uppercase tracking-wider whitespace-nowrap text-${align}`}
           >
             {label}
           </th>
@@ -195,8 +195,8 @@ function SourceGroup({ source, items }: SourceGroupProps) {
       <tr>
         <td
           colSpan={COLUMN_COUNT}
-          className="px-4 py-2 border-y border-slate-200"
-          style={{ background: `${theme.accent}10` }}
+          className="px-4 py-2 border-y border-white/10"
+          style={{ background: `${theme.accent}26` }}
         >
           <div className="flex items-center gap-2">
             <span
@@ -207,7 +207,7 @@ function SourceGroup({ source, items }: SourceGroupProps) {
             <span className="text-xs font-semibold" style={{ color: theme.accent }}>
               {theme.label}
             </span>
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-white/60">
               — {items.length} {items.length === 1 ? "result" : "results"}
             </span>
           </div>
@@ -229,7 +229,7 @@ interface ProductRowProps {
 function ProductRow({ item, isTopMatch, accent }: ProductRowProps) {
   return (
     <tr
-      className="group border-b border-slate-100 hover:bg-slate-50 transition-colors duration-150"
+      className="group border-b border-white/[0.08] hover:bg-white/5 transition-colors duration-150"
       style={{ borderLeft: `3px solid ${accent}` }}
     >
       {/* Product name + image */}
@@ -238,13 +238,13 @@ function ProductRow({ item, isTopMatch, accent }: ProductRowProps) {
           <ProductImage url={item.image_url} accent={accent} />
           <div className="min-w-0">
             <p
-              className="font-medium text-slate-900 line-clamp-2 text-xs leading-snug"
+              className="font-medium text-white line-clamp-2 text-xs leading-snug"
               title={item.title}
             >
               {item.title}
             </p>
             {isTopMatch && (
-              <span className="inline-flex items-center mt-1 text-[10px] font-medium uppercase tracking-wide text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 rounded-full px-2 py-0.5">
+              <span className="inline-flex items-center mt-1 text-[10px] font-medium uppercase tracking-wide text-emerald-300 bg-emerald-400/15 ring-1 ring-emerald-400/30 rounded-full px-2 py-0.5">
                 {STRINGS.topMatchBadge}
               </span>
             )}
@@ -258,12 +258,12 @@ function ProductRow({ item, isTopMatch, accent }: ProductRowProps) {
       </td>
 
       {/* Current price */}
-      <td className="px-4 py-2.5 text-right font-semibold text-slate-900 whitespace-nowrap text-xs">
+      <td className="px-4 py-2.5 text-right font-semibold text-white whitespace-nowrap text-xs">
         {formatINR(item.current_price)}
       </td>
 
       {/* Last purchased price */}
-      <td className="px-4 py-2.5 text-right text-slate-600 whitespace-nowrap text-xs">
+      <td className="px-4 py-2.5 text-right text-white/70 whitespace-nowrap text-xs">
         {formatINR(item.last_purchased_price)}
       </td>
 
@@ -284,14 +284,14 @@ function ProductRow({ item, isTopMatch, accent }: ProductRowProps) {
       {/* Availability */}
       <td className="px-4 py-2.5 text-xs whitespace-nowrap">
         {item.availability ? (
-          <span className="text-slate-700">{item.availability}</span>
+          <span className="text-white/80">{item.availability}</span>
         ) : (
-          <span className="text-slate-300">—</span>
+          <span className="text-white/25">—</span>
         )}
       </td>
 
       {/* Last ordered date */}
-      <td className="px-4 py-2.5 text-xs text-slate-600 whitespace-nowrap">
+      <td className="px-4 py-2.5 text-xs text-white/70 whitespace-nowrap">
         {formatDate(item.last_ordered_date)}
       </td>
 
@@ -300,7 +300,7 @@ function ProductRow({ item, isTopMatch, accent }: ProductRowProps) {
         {item.buy_suggestion ? (
           <SuggestionBadge label={item.buy_suggestion} reason={item.suggestion_reason} />
         ) : (
-          <span className="text-slate-300 text-xs">—</span>
+          <span className="text-white/25 text-xs">—</span>
         )}
       </td>
 
@@ -311,14 +311,14 @@ function ProductRow({ item, isTopMatch, accent }: ProductRowProps) {
             href={item.product_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 whitespace-nowrap transition-colors"
+            className="inline-flex items-center gap-1 text-xs font-medium text-sky-300 hover:text-sky-200 whitespace-nowrap transition-colors"
             aria-label={`View ${item.title} on ${item.source}`}
           >
             {STRINGS.viewButtonLabel}
             <ExternalLink size={11} aria-hidden="true" />
           </a>
         ) : (
-          <span className="text-slate-300 text-xs">—</span>
+          <span className="text-white/25 text-xs">—</span>
         )}
       </td>
 
@@ -345,7 +345,7 @@ function MobileSourceGroup({ source, items }: SourceGroupProps) {
         <span className="text-xs font-semibold" style={{ color: theme.accent }}>
           {theme.label}
         </span>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-white/60">
           — {items.length} {items.length === 1 ? "result" : "results"}
         </span>
       </div>
@@ -361,7 +361,7 @@ function MobileSourceGroup({ source, items }: SourceGroupProps) {
 function MobileCard({ item, isTopMatch, accent }: ProductRowProps) {
   return (
     <article
-      className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm"
+      className="rounded-3xl border border-white/10 bg-white/[0.07] backdrop-blur-sm p-3.5 shadow-sm"
       style={{ borderLeft: `3px solid ${accent}` }}
     >
       {/* Header: image + title + source */}
@@ -369,7 +369,7 @@ function MobileCard({ item, isTopMatch, accent }: ProductRowProps) {
         <ProductImage url={item.image_url} accent={accent} />
         <div className="min-w-0 flex-1">
           <p
-            className="font-medium text-slate-900 text-sm leading-snug line-clamp-2"
+            className="font-medium text-white text-sm leading-snug line-clamp-2"
             title={item.title}
           >
             {item.title}
@@ -377,7 +377,7 @@ function MobileCard({ item, isTopMatch, accent }: ProductRowProps) {
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <SourceBadge source={item.source} />
             {isTopMatch && (
-              <span className="inline-flex items-center text-[10px] font-medium uppercase tracking-wide text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 rounded-full px-2 py-0.5">
+              <span className="inline-flex items-center text-[10px] font-medium uppercase tracking-wide text-emerald-300 bg-emerald-400/15 ring-1 ring-emerald-400/30 rounded-full px-2 py-0.5">
                 {STRINGS.topMatchBadge}
               </span>
             )}
@@ -388,12 +388,12 @@ function MobileCard({ item, isTopMatch, accent }: ProductRowProps) {
       {/* Price + rating + View */}
       <div className="flex items-end justify-between gap-3 mt-3">
         <div className="min-w-0">
-          <div className="text-lg font-bold text-slate-900 leading-none">
+          <div className="text-lg font-bold text-white leading-none">
             {formatINR(item.current_price)}
           </div>
           {item.last_purchased_price !== null && (
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-slate-500 whitespace-nowrap">
+              <span className="text-xs text-white/60 whitespace-nowrap">
                 {STRINGS.columnLastPaid}: {formatINR(item.last_purchased_price)}
               </span>
               <PriceTrend current={item.current_price} lastPaid={item.last_purchased_price} />
@@ -410,7 +410,7 @@ function MobileCard({ item, isTopMatch, accent }: ProductRowProps) {
               href={item.product_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 transition-colors"
+              className="inline-flex items-center gap-1 text-xs font-medium text-sky-300 hover:text-sky-200 rounded-lg border border-sky-400/30 bg-sky-400/15 px-3 py-1.5 transition-colors"
               aria-label={`View ${item.title} on ${item.source}`}
             >
               {STRINGS.viewButtonLabel}
@@ -421,12 +421,12 @@ function MobileCard({ item, isTopMatch, accent }: ProductRowProps) {
       </div>
 
       {/* Meta: availability · last ordered · buy suggestion */}
-      <div className="grid grid-cols-2 gap-x-3 gap-y-2 mt-3 pt-3 border-t border-slate-100">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-2 mt-3 pt-3 border-t border-white/[0.08]">
         <Meta label={STRINGS.columnAvailability} value={item.availability ?? "—"} />
         <Meta label={STRINGS.columnLastOrdered} value={formatDate(item.last_ordered_date)} />
         {item.buy_suggestion && (
           <div className="col-span-2 flex items-center gap-2">
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
               {STRINGS.columnSuggestion}
             </span>
             <SuggestionBadge label={item.buy_suggestion} reason={item.suggestion_reason} />
@@ -440,10 +440,10 @@ function MobileCard({ item, isTopMatch, accent }: ProductRowProps) {
 function Meta({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+      <div className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
         {label}
       </div>
-      <div className="text-xs text-slate-700 truncate" title={value}>
+      <div className="text-xs text-white/80 truncate" title={value}>
         {value}
       </div>
     </div>
@@ -461,7 +461,7 @@ function ProductImage({ url, accent }: ProductImageProps) {
       <img
         src={url}
         alt=""
-        className="w-10 h-10 rounded-lg object-contain flex-shrink-0 bg-slate-50 p-0.5 ring-1 ring-slate-200 group-hover:ring-slate-300 transition"
+        className="w-10 h-10 rounded-lg object-contain flex-shrink-0 bg-white/95 p-0.5 ring-1 ring-white/15 group-hover:ring-white/25 transition"
         onError={(e) => {
           const el = e.currentTarget as HTMLImageElement;
           el.style.display = "none";
@@ -476,8 +476,8 @@ function ProductImage({ url, accent }: ProductImageProps) {
     <div
       className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center"
       style={{
-        background: `${accent}10`,
-        boxShadow: `inset 0 0 0 1px ${accent}25`,
+        background: `${accent}26`,
+        boxShadow: `inset 0 0 0 1px ${accent}55`,
       }}
       aria-hidden="true"
     >

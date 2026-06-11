@@ -12,7 +12,7 @@ export function SourceBadge({ source }: Props) {
   if (Logo) {
     return (
       <span
-        className="inline-flex items-center px-2 py-1 rounded-md bg-white ring-1 ring-slate-200 whitespace-nowrap"
+        className="inline-flex items-center px-2 py-1 rounded-md bg-white/95 ring-1 ring-white/20 whitespace-nowrap"
         aria-label={`Source: ${theme.label}`}
       >
         <Logo height={14} />
