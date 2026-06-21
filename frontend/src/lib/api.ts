@@ -3,10 +3,13 @@ import type {
   CartCheckoutResponse,
   ChatRequest,
   ChatResponse,
+  OtpResponse,
   ProductQuery,
   ProductSearchResponse,
   RecommendationRequest,
   RecommendationResponse,
+  RefreshResponse,
+  RefreshSource,
 } from "./types";
 
 const BASE = "/api";
@@ -43,4 +46,7 @@ export const api = {
   ): Promise<RecommendationResponse> => post("/recommendations/next-purchase", req),
   checkoutCart: (req: CartCheckoutRequest): Promise<CartCheckoutResponse> =>
     post("/cart/checkout", req),
+  refreshOrders: (source: RefreshSource): Promise<RefreshResponse> =>
+    post("/products/refresh", { source }),
+  submitOtp: (otp: string): Promise<OtpResponse> => post("/otp", { otp }),
 };

@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from "react";
-import { Sparkles, MessageSquare, LayoutGrid, ShoppingCart } from "lucide-react";
+import { Sparkles, MessageSquare, LayoutGrid, ShoppingCart, Check, X } from "lucide-react";
 import { useChat } from "../hooks/useChat";
 import { useRecommendations } from "../hooks/useRecommendations";
 import { useCart } from "../hooks/useCart";
+import { useRefresh } from "../hooks/useRefresh";
 import { ChatWindow } from "../components/chat/ChatWindow";
 import { ComparisonTable } from "../components/results/ComparisonTable";
 import { RecommendationsDrawer } from "../components/recommendations/RecommendationsDrawer";
 import { CartDrawer } from "../components/cart/CartDrawer";
+import { RefreshButtons } from "../components/refresh/RefreshButtons";
+import { OtpModal } from "../components/refresh/OtpModal";
 import { STRINGS } from "../lib/strings";
 import { getSourceTheme } from "../lib/source-theme";
 
@@ -17,6 +20,7 @@ export default function App() {
     useChat();
   const recommendations = useRecommendations();
   const cart = useCart();
+  const refresh = useRefresh();
   const [recsOpen, setRecsOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<MobileTab>("chat");
@@ -50,6 +54,7 @@ export default function App() {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+          <RefreshButtons state={refresh} />
           <button
             type="button"
             onClick={() => setCartOpen(true)}
@@ -172,6 +177,46 @@ export default function App() {
       />
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+
+      <OtpModal state={refresh} />
+
+      <RefreshToast state={refresh} />
+    </div>
+  );
+}
+
+function RefreshToast({ state }: { state: ReturnType<typeof useRefresh> }) {
+  const { status, dismissStatus } = state;
+
+  // Auto-dismiss after a few seconds whenever a new status appears.
+  useEffect(() => {
+    if (!status) return;
+    const t = setTimeout(dismissStatus, 4000);
+    return () => clearTimeout(t);
+  }, [status, dismissStatus]);
+
+  if (!status) return null;
+
+  const isError = status.kind === "error";
+  return (
+    <div
+      role={isError ? "alert" : "status"}
+      className={`fixed top-4 right-4 z-[60] max-w-xs flex items-start gap-2 rounded-xl px-3.5 py-2.5 text-xs font-medium shadow-2xl ring-1 fade-up ${
+        isError
+          ? "bg-rose-500/90 text-white ring-rose-300/40"
+          : "bg-emerald-500/90 text-white ring-emerald-300/40"
+      }`}
+    >
+      {!isError && <Check size={14} className="mt-0.5 flex-shrink-0" aria-hidden="true" />}
+      <span className="flex-1">{status.msg}</span>
+      <button
+        type="button"
+        onClick={dismissStatus}
+        aria-label="Dismiss"
+        className="flex-shrink-0 -mr-1 text-white/80 hover:text-white transition-colors"
+      >
+        <X size={14} aria-hidden="true" />
+      </button>
     </div>
   );
 }

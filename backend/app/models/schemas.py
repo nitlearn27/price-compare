@@ -79,3 +79,19 @@ class CartCheckoutRequest(BaseModel):
 class CartCheckoutResponse(BaseModel):
     submitted: int  # count of products sent
     detail: str  # human-readable confirmation
+
+
+class RefreshRequest(BaseModel):
+    source: Literal["amazon", "flipkart"]
+
+
+class RefreshResponse(BaseModel):
+    detail: str  # human-readable confirmation
+
+
+class OtpRequest(BaseModel):
+    otp: str = Field(..., min_length=1)
+
+
+class OtpResponse(BaseModel):
+    detail: str  # human-readable confirmation

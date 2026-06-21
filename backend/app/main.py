@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
-from app.routers import cart, chat, products, recommendations
+from app.routers import cart, chat, orders, products, recommendations
 
 # Resolved once at import time: works in Docker (/app/dist) and is absent in local dev
 _DIST_DIR = Path(__file__).parent.parent / "dist"
@@ -52,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(products.router, prefix="/api")
     app.include_router(recommendations.router, prefix="/api")
     app.include_router(cart.router, prefix="/api")
+    app.include_router(orders.router, prefix="/api")
 
     # Serve the React build when the dist/ directory exists (i.e. inside Docker).
     # In local dev the Vite dev server handles the frontend, so this is intentionally skipped.

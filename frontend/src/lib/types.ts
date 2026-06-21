@@ -87,3 +87,21 @@ export interface CartCheckoutResponse {
   submitted: number;
   detail: string;
 }
+
+export type RefreshSource = "amazon" | "flipkart";
+
+export interface RefreshRequest {
+  source: RefreshSource;
+}
+
+export interface RefreshResponse {
+  detail: string;
+}
+
+export interface OtpRequest {
+  otp: string;
+}
+
+export interface OtpResponse {
+  detail: string;
+}

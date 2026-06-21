@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
+import respx
 from pydantic import ValidationError
 
 from app.models.schemas import ChatMessage, ProductListing, ProductQuery
@@ -159,9 +160,7 @@ def test_products_search_returns_empty_list(client):
 
 
 def test_flipkart_search_success(client):
-    listings = [
-        ProductListing(**_make_listing(source="Flipkart", buy_suggestion="new"))
-    ]
+    listings = [ProductListing(**_make_listing(source="Flipkart", buy_suggestion="new"))]
     with patch(
         "app.routers.products.search_flipkart",
         new_callable=AsyncMock,
@@ -217,6 +216,74 @@ def test_product_query_roundtrip():
 def test_product_query_empty_string_invalid():
     with pytest.raises(ValidationError):
         ProductQuery(query="")
+
+
+# ── /api/products/refresh ─────────────────────────────────────────────────────
+
+
+@respx.mock
+def test_refresh_amazon_success(client):
+    route = respx.post("https://refresh.test/amazon").mock(
+        return_value=httpx.Response(202, json={"ok": True})
+    )
+    resp = client.post("/api/products/refresh", json={"source": "amazon"})
+
+    assert resp.status_code == 200
+    assert "Amazon" in resp.json()["detail"]
+    # The refresh service posts the configured order count.
+    assert route.called
+    assert b'"orders"' in route.calls.last.request.content
+
+
+@respx.mock
+def test_refresh_flipkart_success(client):
+    route = respx.post("https://refresh.test/flipkart").mock(
+        return_value=httpx.Response(202, json={"ok": True})
+    )
+    resp = client.post("/api/products/refresh", json={"source": "flipkart"})
+
+    assert resp.status_code == 200
+    assert route.called
+
+
+def test_refresh_invalid_source_rejected(client):
+    resp = client.post("/api/products/refresh", json={"source": "ebay"})
+    assert resp.status_code == 422
+
+
+@respx.mock
+def test_refresh_upstream_error_returns_502(client):
+    respx.post("https://refresh.test/amazon").mock(return_value=httpx.Response(500, text="boom"))
+    resp = client.post("/api/products/refresh", json={"source": "amazon"})
+    assert resp.status_code == 502
+
+
+# ── /api/otp ──────────────────────────────────────────────────────────────────
+
+
+@respx.mock
+def test_submit_otp_success(client):
+    route = respx.post("https://otp.test/api/otp").mock(
+        return_value=httpx.Response(200, json={"ok": True})
+    )
+    resp = client.post("/api/otp", json={"otp": "600939"})
+
+    assert resp.status_code == 200
+    assert route.called
+    # The entered code is forwarded verbatim in the body.
+    assert b"600939" in route.calls.last.request.content
+
+
+def test_submit_otp_empty_rejected(client):
+    resp = client.post("/api/otp", json={"otp": ""})
+    assert resp.status_code == 422
+
+
+@respx.mock
+def test_submit_otp_upstream_error_returns_502(client):
+    respx.post("https://otp.test/api/otp").mock(return_value=httpx.Response(500, text="boom"))
+    resp = client.post("/api/otp", json={"otp": "600939"})
+    assert resp.status_code == 502
 
 
 # ── Integration: end-to-end with both services mocked ────────────────────────

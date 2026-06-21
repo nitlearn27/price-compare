@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     cart_flipkart_url: str = "https://purchase-history-production.up.railway.app/api/cart"
     cart_amazon_url: str = ""  # to be wired later
 
+    # OTP submission — external service. Triggered by the "otp <number>" chat keyword.
+    otp_api_url: str = "https://amazon-fresh-history-production.up.railway.app/api/otp"
+
     # App
     cors_allow_origins: str = "http://localhost:5173"
     log_level: str = "INFO"

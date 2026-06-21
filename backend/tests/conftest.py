@@ -29,6 +29,7 @@ def override_settings(monkeypatch):
         refresh_amazon_url="https://refresh.test/amazon",
         refresh_flipkart_url="https://refresh.test/flipkart",
         refresh_orders=2,
+        otp_api_url="https://otp.test/api/otp",
         search_product_flipkart_url="https://flipkart.test/search",
         cors_allow_origins="http://localhost:5173",
         log_level="DEBUG",

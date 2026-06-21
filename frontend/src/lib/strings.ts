@@ -72,4 +72,21 @@ export const STRINGS = {
   cartSubmit: "Submit Order",
   cartSubmitting: "Submitting…",
   cartSubmitError: "Couldn't submit your order",
+
+  refreshAmazon: "Refresh Amazon",
+  refreshFlipkart: "Refresh Flipkart",
+  refreshing: "Refreshing…",
+  refreshAmazonSuccess: "Amazon refresh started. Enter the OTP to continue.",
+  refreshFlipkartSuccess: "Flipkart refresh started. Updated data will appear shortly.",
+  refreshError: "Couldn't start the refresh. Please try again.",
+
+  otpTitle: "Enter OTP",
+  otpSubtitle: "Amazon sent a one-time code to complete the refresh.",
+  otpPlaceholder: "6-digit code",
+  otpSubmit: "Submit OTP",
+  otpSubmitting: "Submitting…",
+  otpCancel: "Cancel",
+  otpClose: "Close OTP dialog",
+  otpSuccess: "OTP submitted.",
+  otpError: "Couldn't submit the OTP. Please try again.",
 } as const;
