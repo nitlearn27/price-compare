@@ -4,12 +4,14 @@ import { useChat } from "../hooks/useChat";
 import { useRecommendations } from "../hooks/useRecommendations";
 import { useCart } from "../hooks/useCart";
 import { useRefresh } from "../hooks/useRefresh";
+import { useInstallPrompt } from "../hooks/useInstallPrompt";
 import { ChatWindow } from "../components/chat/ChatWindow";
 import { ComparisonTable } from "../components/results/ComparisonTable";
 import { RecommendationsDrawer } from "../components/recommendations/RecommendationsDrawer";
 import { CartDrawer } from "../components/cart/CartDrawer";
 import { RefreshButtons } from "../components/refresh/RefreshButtons";
 import { OtpModal } from "../components/refresh/OtpModal";
+import { HeaderMenu } from "../components/header/HeaderMenu";
 import { STRINGS } from "../lib/strings";
 import { getSourceTheme } from "../lib/source-theme";
 
@@ -21,6 +23,7 @@ export default function App() {
   const recommendations = useRecommendations();
   const cart = useCart();
   const refresh = useRefresh();
+  const install = useInstallPrompt();
   const [recsOpen, setRecsOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<MobileTab>("chat");
@@ -82,6 +85,7 @@ export default function App() {
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/40 animate-pulse" />
             Live
           </span>
+          <HeaderMenu install={install} />
         </div>
       </header>
 

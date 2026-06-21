@@ -89,4 +89,10 @@ export const STRINGS = {
   otpClose: "Close OTP dialog",
   otpSuccess: "OTP submitted.",
   otpError: "Couldn't submit the OTP. Please try again.",
+
+  menuLabel: "More options",
+  installApp: "Install app",
+  installInstalled: "App installed",
+  installHint:
+    'To install, open your browser menu and choose "Install app" / "Add to Home screen".',
 } as const;
