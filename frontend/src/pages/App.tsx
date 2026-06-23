@@ -18,10 +18,10 @@ import { getSourceTheme } from "../lib/source-theme";
 type MobileTab = "chat" | "results";
 
 export default function App() {
-  const { messages, input, setInput, isLoading, sendMessage, submitExample, productSearch } =
-    useChat();
-  const recommendations = useRecommendations();
   const cart = useCart();
+  const { messages, input, setInput, isLoading, sendMessage, submitExample, productSearch } =
+    useChat(cart);
+  const recommendations = useRecommendations();
   const refresh = useRefresh();
   const install = useInstallPrompt();
   const [recsOpen, setRecsOpen] = useState(false);

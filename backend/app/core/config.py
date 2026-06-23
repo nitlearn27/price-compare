@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     cors_allow_origins: str = "http://localhost:5173"
     log_level: str = "INFO"
     gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
+    openrouter_fallback_model: str = "openrouter/free"
 
     @property
     def sf_instance_url(self) -> str:

@@ -1,5 +1,5 @@
 from unittest.mock import AsyncMock, patch
-import pytest
+
 from app.models.schemas import ProductListing
 
 
@@ -35,6 +35,27 @@ def test_identify_success(client):
         "summary": "Inside of refrigerator contains milk and eggs."
     }
     
+    recent_mock = [
+        {
+            "Id": "tomato-id",
+            "Name": "Fresh Tomato 1kg",
+            "Title__c": "Fresh Tomato 1kg",
+            "Source__c": "Amazon",
+            "Last_Ordered_Date__c": "2026-06-20",
+            "Number_Of_Times_Purchased__c": 5,
+            "Rating__c": 4.5
+        },
+        {
+            "Id": "milk-id",
+            "Name": "Amul Milk",
+            "Title__c": "Amul Milk",
+            "Source__c": "Flipkart",
+            "Last_Ordered_Date__c": "2026-06-21",
+            "Number_Of_Times_Purchased__c": 3,
+            "Rating__c": 4.2
+        }
+    ]
+    
     listings = [ProductListing(**_make_listing(id="milk-id", title="Amul Milk"))]
 
     with (
@@ -42,6 +63,11 @@ def test_identify_success(client):
             "app.routers.identify.identify_products_in_image",
             new_callable=AsyncMock,
             return_value=gemini_mock,
+        ),
+        patch(
+            "app.routers.identify.salesforce_client.get_recent_products",
+            new_callable=AsyncMock,
+            return_value=recent_mock,
         ),
         patch(
             "app.routers.identify.salesforce_client.search_products",
@@ -62,8 +88,12 @@ def test_identify_success(client):
     data = resp.json()
     assert "milk" in data["reply"].lower()
     assert "eggs" in data["reply"].lower()
+    assert "fresh tomato 1kg" in data["reply"].lower()
     assert len(data["results"]) == 1
     assert data["results"][0]["id"] == "milk-id"
+    assert len(data["must_have"]) == 1
+    assert data["must_have"][0]["id"] == "tomato-id"
+    assert data["must_have"][0]["title"] == "Fresh Tomato 1kg"
 
 
 def test_identify_no_items_found(client):

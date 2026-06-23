@@ -156,6 +156,23 @@ class SalesforceClient:
         logger.info("Salesforce returned %d records for query=%r", len(records), query)
         return records
 
+    async def get_recent_products(self, days: int = 7, limit: int | None = None) -> list[dict]:
+        from datetime import date, timedelta
+        cutoff_date = (date.today() - timedelta(days=days)).isoformat()
+        
+        where_clause = f"last_ordered_date__c >= {cutoff_date}"
+        
+        s = self._settings
+        limit = limit if limit is not None else s.sf_query_limit
+        
+        instance_url = self._instance_url or s.sf_instance_url
+        url = f"{instance_url}/services/data/v{s.sf_api_version}/query"
+        
+        soql = self._build_soql(where_clause, limit)
+        logger.info("SOQL query (recently ordered): %s", soql)
+        data = await self._request("GET", url, params={"q": soql})
+        return data.get("records", [])
+
 
 # Module-level singleton — reused across requests to share the token cache.
 salesforce_client = SalesforceClient()

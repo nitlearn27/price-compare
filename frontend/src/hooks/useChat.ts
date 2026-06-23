@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import type { UIMessage } from "../lib/types";
+import type { UIMessage, CartItem } from "../lib/types";
 import { api } from "../lib/api";
 import { STRINGS } from "../lib/strings";
 import { useProductSearch } from "./useProductSearch";
@@ -9,7 +9,7 @@ function nextId() {
   return String(++_idCounter);
 }
 
-export function useChat() {
+export function useChat(cart?: { add: (item: CartItem) => void }) {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -58,6 +58,16 @@ export function useChat() {
           addMessage("assistant", response.reply);
           
           productSearch.setResults(response.results, "salesforce");
+
+          if (response.must_have && response.must_have.length > 0 && cart) {
+            response.must_have.forEach((item) => {
+              cart.add({
+                id: item.id,
+                name: item.title,
+                source: item.source,
+              });
+            });
+          }
         } else {
           const history = [
             ...messages,

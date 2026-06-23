@@ -78,9 +78,16 @@ export interface IdentifyRequest {
   mime_type: string;
 }
 
+export interface MustHaveProduct {
+  id: string;
+  title: string;
+  source: string;
+}
+
 export interface IdentifyResponse {
   reply: string;
   results: ProductListing[];
+  must_have: MustHaveProduct[];
 }
 
 export interface CartItem {
