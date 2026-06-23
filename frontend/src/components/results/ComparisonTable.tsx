@@ -233,18 +233,18 @@ function ProductRow({ item, isTopMatch, accent }: ProductRowProps) {
       style={{ borderLeft: `3px solid ${accent}` }}
     >
       {/* Product name + image */}
-      <td className="px-4 py-2.5 max-w-[240px]">
+      <td className="px-4 py-2.5 max-w-[380px]">
         <div className="flex items-start gap-3">
-          <ProductImage url={item.image_url} accent={accent} />
-          <div className="min-w-0">
+          <ProductImage url={item.image_url} accent={accent} className="w-32 h-32 rounded-2xl" />
+          <div className="min-w-0 flex-1">
             <p
-              className="font-medium text-white line-clamp-2 text-xs leading-snug"
+              className="font-medium text-white line-clamp-4 text-xs leading-snug"
               title={item.title}
             >
               {item.title}
             </p>
             {isTopMatch && (
-              <span className="inline-flex items-center mt-1 text-[10px] font-medium uppercase tracking-wide text-emerald-300 bg-emerald-400/15 ring-1 ring-emerald-400/30 rounded-full px-2 py-0.5">
+              <span className="inline-flex items-center mt-1.5 text-[10px] font-medium uppercase tracking-wide text-emerald-300 bg-emerald-400/15 ring-1 ring-emerald-400/30 rounded-full px-2 py-0.5">
                 {STRINGS.topMatchBadge}
               </span>
             )}
@@ -366,10 +366,10 @@ function MobileCard({ item, isTopMatch, accent }: ProductRowProps) {
     >
       {/* Header: image + title + source */}
       <div className="flex gap-3">
-        <ProductImage url={item.image_url} accent={accent} />
+        <ProductImage url={item.image_url} accent={accent} className="w-36 h-36 rounded-2xl" />
         <div className="min-w-0 flex-1">
           <p
-            className="font-medium text-white text-sm leading-snug line-clamp-2"
+            className="font-medium text-white text-sm leading-snug line-clamp-4"
             title={item.title}
           >
             {item.title}
@@ -453,15 +453,17 @@ function Meta({ label, value }: { label: string; value: string }) {
 interface ProductImageProps {
   url: string | null;
   accent: string;
+  className?: string;
 }
 
-function ProductImage({ url, accent }: ProductImageProps) {
+function ProductImage({ url, accent, className }: ProductImageProps) {
+  const sizeClasses = className || "w-10 h-10 rounded-lg";
   if (url) {
     return (
       <img
         src={url}
         alt=""
-        className="w-10 h-10 rounded-lg object-contain flex-shrink-0 bg-white/95 p-0.5 ring-1 ring-white/15 group-hover:ring-white/25 transition"
+        className={`${sizeClasses} object-contain flex-shrink-0 bg-white/95 p-0.5 ring-1 ring-white/15 group-hover:ring-white/25 transition`}
         onError={(e) => {
           const el = e.currentTarget as HTMLImageElement;
           el.style.display = "none";
@@ -474,14 +476,14 @@ function ProductImage({ url, accent }: ProductImageProps) {
   }
   return (
     <div
-      className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center"
+      className={`${sizeClasses} flex-shrink-0 flex items-center justify-center`}
       style={{
         background: `${accent}26`,
         boxShadow: `inset 0 0 0 1px ${accent}55`,
       }}
       aria-hidden="true"
     >
-      <span className="text-base">📦</span>
+      <span className="text-base-xl">📦</span>
     </div>
   );
 }

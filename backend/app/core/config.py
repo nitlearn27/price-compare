@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     # App
     cors_allow_origins: str = "http://localhost:5173"
     log_level: str = "INFO"
+    gemini_api_key: str = ""
 
     @property
     def sf_instance_url(self) -> str:

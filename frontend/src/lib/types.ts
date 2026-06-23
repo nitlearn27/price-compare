@@ -70,6 +70,17 @@ export interface RecommendationResponse {
 /** A UI message extends ChatMessage with an id for React keys. */
 export interface UIMessage extends ChatMessage {
   id: string;
+  image?: string; // Base64 data URL
+}
+
+export interface IdentifyRequest {
+  image: string; // Base64 data (without prefix)
+  mime_type: string;
+}
+
+export interface IdentifyResponse {
+  reply: string;
+  results: ProductListing[];
 }
 
 export interface CartItem {

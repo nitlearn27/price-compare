@@ -119,7 +119,7 @@ export default function App() {
             messages={messages}
             inputValue={input}
             onInputChange={setInput}
-            onSubmit={() => sendMessage(input)}
+            onSubmit={(file) => sendMessage(input, file)}
             isLoading={isLoading}
             onExampleClick={submitExample}
           />

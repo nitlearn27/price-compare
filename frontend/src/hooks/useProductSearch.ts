@@ -48,5 +48,17 @@ export function useProductSearch() {
     }
   }, []);
 
-  return { ...state, search, searchFlipkart };
+  const setResults = useCallback((results: ProductListing[], searchedVia: SearchedVia) => {
+    setState({ results, loading: false, error: null, searchedVia });
+  }, []);
+
+  const setLoading = useCallback((loading: boolean) => {
+    setState((prev) => ({ ...prev, loading, error: null }));
+  }, []);
+
+  const setError = useCallback((error: string) => {
+    setState((prev) => ({ ...prev, loading: false, error }));
+  }, []);
+
+  return { ...state, search, searchFlipkart, setResults, setLoading, setError };
 }

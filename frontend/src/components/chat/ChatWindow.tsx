@@ -9,7 +9,7 @@ interface Props {
   messages: UIMessage[];
   inputValue: string;
   onInputChange: (value: string) => void;
-  onSubmit: () => void;
+  onSubmit: (file?: File | null) => void;
   isLoading: boolean;
   onExampleClick: (prompt: string) => void;
 }

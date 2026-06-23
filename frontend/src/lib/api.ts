@@ -3,6 +3,8 @@ import type {
   CartCheckoutResponse,
   ChatRequest,
   ChatResponse,
+  IdentifyRequest,
+  IdentifyResponse,
   OtpResponse,
   ProductQuery,
   ProductSearchResponse,
@@ -37,6 +39,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 
 export const api = {
   chat: (req: ChatRequest): Promise<ChatResponse> => post("/chat", req),
+  identifyImage: (req: IdentifyRequest): Promise<IdentifyResponse> => post("/identify", req),
   searchProducts: (query: ProductQuery): Promise<ProductSearchResponse> =>
     post("/products/search", query),
   searchProductsFlipkart: (query: ProductQuery): Promise<ProductSearchResponse> =>
