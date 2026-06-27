@@ -74,6 +74,32 @@ async def test_fetch_next_purchase_raises_on_timeout():
         await fetch_next_purchase("Give recommendations")
 
 
+# ── Caching ───────────────────────────────────────────────────────────────────
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_cache_hit_avoids_second_upstream_call():
+    route = respx.post(REC_URL).mock(return_value=httpx.Response(200, json=SAMPLE_RESPONSE))
+
+    first = await fetch_next_purchase("milk")
+    second = await fetch_next_purchase("milk")
+
+    assert route.call_count == 1  # second call served from cache
+    assert second.insight_message == first.insight_message
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_refresh_bypasses_cache():
+    route = respx.post(REC_URL).mock(return_value=httpx.Response(200, json=SAMPLE_RESPONSE))
+
+    await fetch_next_purchase("milk")
+    await fetch_next_purchase("milk", refresh=True)
+
+    assert route.call_count == 2  # refresh forces a re-fetch
+
+
 # ── Router ────────────────────────────────────────────────────────────────────
 
 

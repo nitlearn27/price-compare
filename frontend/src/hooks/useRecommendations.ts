@@ -18,11 +18,14 @@ export function useRecommendations() {
     error: null,
   });
 
-  const fetch = useCallback(async (userInput: string) => {
+  const fetch = useCallback(async (userInput: string, opts?: { refresh?: boolean }) => {
     const trimmed = userInput.trim() || STRINGS.recommendationsDefaultInput;
     setState({ insight: null, recommendations: [], loading: true, error: null });
     try {
-      const data = await api.getRecommendations({ user_input: trimmed });
+      const data = await api.getRecommendations({
+        user_input: trimmed,
+        refresh: opts?.refresh,
+      });
       setState({
         insight: data.insight_message,
         recommendations: data.recommendations,

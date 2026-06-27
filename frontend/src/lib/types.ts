@@ -34,6 +34,7 @@ export interface ProductListing {
   product_url: string | null;
   image_url: string | null;
   availability: string | null;
+  weight?: string | null;
   last_ordered_date: string | null;
   times_purchased: number | null;
   buy_suggestion: BuySuggestion | null;
@@ -68,6 +69,8 @@ export interface ProductSearchResponse {
 
 export interface RecommendationRequest {
   user_input: string;
+  /** Bypass the server-side cache and re-fetch from the engine. */
+  refresh?: boolean;
 }
 
 export interface RecommendationItem {

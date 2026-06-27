@@ -77,11 +77,12 @@ async def test_amazon_agent_is_placeholder():
 
 
 class _StubSpoke(SourceAgent):
-    def __init__(self, name, result=None, sleep=0.0, raise_exc=None):
+    def __init__(self, name, result=None, sleep=0.0, raise_exc=None, covers_source=None):
         self.name = name
         self._result = result
         self._sleep = sleep
         self._raise = raise_exc
+        self.covers_source = covers_source
         self.called = False
 
     async def search(self, query, limit, filters=None):
@@ -94,12 +95,16 @@ class _StubSpoke(SourceAgent):
 
 
 @pytest.mark.asyncio
-async def test_tiered_skips_live_when_catalog_satisfies():
-    """If the catalog has enough results, the live websites are never touched."""
+async def test_tiered_skips_live_when_catalog_covers_source():
+    """When the catalog already has a Flipkart product, the live Flipkart site
+    is never touched."""
     catalog = _StubSpoke(
         "sf", SourceResult("Salesforce catalog", [listing("1", "Spring Onion", "Flipkart")])
     )
-    live = _StubSpoke("fk", SourceResult("Flipkart (live)", [listing("2", "Onion", "Flipkart")]))
+    live = _StubSpoke(
+        "fk", SourceResult("Flipkart (live)", [listing("2", "Onion", "Flipkart")]),
+        covers_source="Flipkart",
+    )
 
     agg = AggregatorAgent(
         primary_spokes=[catalog], live_spokes=[live],
@@ -107,9 +112,35 @@ async def test_tiered_skips_live_when_catalog_satisfies():
     )
     res = await agg.search("spring onion", 3)
 
-    assert live.called is False  # catalog had it → no website hit
+    assert live.called is False  # catalog had a Flipkart item → no website hit
     assert len(res.listings) == 1
     assert {s.source for s in res.sources} == {"Salesforce catalog"}
+
+
+@pytest.mark.asyncio
+async def test_tiered_runs_only_uncovered_live_sources():
+    """Catalog has Flipkart but NOT Amazon → skip live Flipkart, run live Amazon."""
+    catalog = _StubSpoke(
+        "sf", SourceResult("Salesforce catalog", [listing("1", "Atta 5kg", "Flipkart")])
+    )
+    fk = _StubSpoke(
+        "fk", SourceResult("Flipkart (live)", [listing("2", "Atta", "Flipkart")]),
+        covers_source="Flipkart",
+    )
+    am = _StubSpoke(
+        "am", SourceResult("Amazon (live)", [listing("3", "Atta", "Amazon")]),
+        covers_source="Amazon",
+    )
+
+    agg = AggregatorAgent(
+        primary_spokes=[catalog], live_spokes=[fk, am],
+        min_catalog_results=1, enrich_history=False,
+    )
+    res = await agg.search("atta", 3)
+
+    assert fk.called is False  # Flipkart already covered by the catalog
+    assert am.called is True  # Amazon missing from catalog → go live
+    assert {p.source for p in res.listings} == {"Flipkart", "Amazon"}
 
 
 @pytest.mark.asyncio

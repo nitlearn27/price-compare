@@ -9,22 +9,14 @@ test.describe("Product comparison flow", () => {
     await page.goto("http://localhost:5173");
   });
 
-  test("shows empty state with example prompts on load", async ({ page }) => {
-    await expect(page.getByText(/what are you looking for/i)).toBeVisible();
-    await expect(page.getByText(/nandini cow milk/i)).toBeVisible();
+  test("shows the recommended picks on load", async ({ page }) => {
+    await expect(page.getByText(/picks for you/i)).toBeVisible();
   });
 
   test("chat input is visible and accepts text", async ({ page }) => {
     const input = page.getByRole("textbox");
     await input.fill("Find Aashirvaad Atta 5kg");
     await expect(input).toHaveValue("Find Aashirvaad Atta 5kg");
-  });
-
-  test("clicking example prompt fills input", async ({ page }) => {
-    const prompt = page.getByText(/nandini cow milk/i).first();
-    await prompt.click();
-    // Input gets set and message is sent
-    await expect(page.getByText(/nandini cow milk/i)).toBeVisible();
   });
 
   test("app title is displayed", async ({ page }) => {

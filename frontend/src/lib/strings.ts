@@ -15,6 +15,11 @@ export const STRINGS = {
   typingIndicatorLabel: "Searching...",
   assistantName: "PriceBot",
 
+  picksHeading: "Picks for you",
+  picksRefresh: "Refresh picks",
+  picksEmpty: "No picks yet — start a search above.",
+  picksError: "Couldn't load your picks right now.",
+
   flipkartFallbackMessage:
     "I couldn't find that in our catalog, so I'm searching Flipkart for live results…",
   liveFlipkartBadge: "Live from Flipkart",
@@ -32,6 +37,7 @@ export const STRINGS = {
   columnTrend: "Trend",
   columnRating: "Rating",
   columnAvailability: "Availability",
+  columnWeight: "Weight",
   columnLastOrdered: "Last Ordered",
   columnSuggestion: "Buy?",
   columnLink: "Link",

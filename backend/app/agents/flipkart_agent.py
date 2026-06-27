@@ -90,6 +90,7 @@ def _match_history(title: str, history: dict) -> ProductListing | None:
 
 class FlipkartAgent(SourceAgent):
     name = "flipkart"
+    covers_source = "Flipkart"  # catalog source__c this live spoke can stand in for
 
     async def search(
         self, query: str, limit: int, filters: SearchFilters | None = None

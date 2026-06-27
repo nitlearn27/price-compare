@@ -1,10 +1,17 @@
 """The aggregator (hub) of the hub-spoke multi-agent search.
 
-Fans out a single query to every source spoke **in parallel** (``asyncio.gather``),
-applies a per-spoke timeout so one slow/failing source can't block the others,
-and merges the results into a single de-duplicated list. Per-source status is
-preserved so the caller (and the conversational LLM) can see which spokes
-responded, were empty, timed out, or aren't implemented yet.
+Tiered fan-out:
+  1. Query the catalog (Salesforce) first — it's fast and carries the user's
+     purchase history.
+  2. For each LIVE source (Flipkart, Amazon), hit its website **only if the
+     catalog didn't already return a product from that source**. So if the
+     catalog has at least one Flipkart and one Amazon item, no live calls happen;
+     if it has Flipkart but no Amazon, only the live Amazon spoke runs.
+
+The chosen live spokes run **in parallel** (``asyncio.gather``) under a per-spoke
+timeout so one slow/failing source can't block the others. Results are merged
+into a single de-duplicated list, with per-source status preserved for the caller
+(and the conversational LLM).
 
 This module contains no LLM calls — it's deterministic and unit-testable without
 any model API access.
@@ -71,30 +78,46 @@ class AggregatorAgent:
             *(self._run_spoke(sp, query, limit, timeout, filters) for sp in self._primary)
         )
         results = list(primary_results)
-        catalog_count = sum(len(r.listings) for r in primary_results)
 
-        if catalog_count >= min_catalog:
-            # Catalog satisfied the search — skip the live websites entirely.
-            logger.info(
-                "Catalog satisfied (%d ≥ %d) — skipping live sources",
-                catalog_count,
-                min_catalog,
-            )
-        else:
-            # Tier 2 — catalog thin/empty → hit the live store websites. Load the
-            # purchase-history map concurrently so enrichment adds no extra wait.
+        # Count how many catalog listings we got per source (case-insensitive).
+        catalog_by_source: dict[str, int] = {}
+        for r in primary_results:
+            for p in r.listings:
+                key = (p.source or "").lower().strip()
+                catalog_by_source[key] = catalog_by_source.get(key, 0) + 1
+
+        # Tier 2 — run a live spoke ONLY when the catalog didn't already cover its
+        # source (fewer than `min_catalog` catalog hits for that source).
+        live_to_run = [
+            sp
+            for sp in self._live
+            if catalog_by_source.get((sp.covers_source or "").lower().strip(), 0) < min_catalog
+        ]
+
+        if live_to_run:
+            # Load the purchase-history map concurrently so enrichment adds no wait.
             history_task = (
                 asyncio.create_task(self._load_history(s.aggregator_history_days))
                 if enrich
                 else None
             )
             live_results = await asyncio.gather(
-                *(self._run_spoke(sp, query, limit, timeout, filters) for sp in self._live)
+                *(self._run_spoke(sp, query, limit, timeout, filters) for sp in live_to_run)
             )
             history = await history_task if history_task is not None else {}
-            for spoke, result in zip(self._live, live_results):
+            for spoke, result in zip(live_to_run, live_results):
                 result.listings = spoke.enrich(result.listings, history)
             results.extend(live_results)
+            logger.info(
+                "Live sources queried: %s (catalog coverage by source: %s)",
+                [sp.name for sp in live_to_run],
+                catalog_by_source,
+            )
+        else:
+            logger.info(
+                "Catalog covers all live sources (%s) — skipping live calls",
+                catalog_by_source,
+            )
 
         merged = self._merge(results)
         logger.info(

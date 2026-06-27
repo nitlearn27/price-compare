@@ -19,9 +19,11 @@ type MobileTab = "chat" | "results";
 
 export default function App() {
   const cart = useCart();
-  const { messages, input, setInput, isLoading, sendMessage, submitExample, productSearch } =
-    useChat(cart);
+  const { messages, input, setInput, isLoading, sendMessage, productSearch } = useChat(cart);
   const recommendations = useRecommendations();
+  // Separate instance powering the first-open "Picks for you" view, so it isn't
+  // disturbed by preference searches made inside the recommendations drawer.
+  const homeRecs = useRecommendations();
   const refresh = useRefresh();
   const install = useInstallPrompt();
   const [recsOpen, setRecsOpen] = useState(false);
@@ -30,6 +32,11 @@ export default function App() {
 
   const resultCount = productSearch.results.length;
   const storeCount = new Set(productSearch.results.map((r) => r.source)).size;
+
+  // Load the first-open recommendations once (the backend caches the engine call).
+  useEffect(() => {
+    homeRecs.fetch("");
+  }, [homeRecs.fetch]);
 
   // On mobile, jump to the results tab as soon as a search starts so the user
   // sees the loading state and results instead of staying on the chat pane.
@@ -121,7 +128,7 @@ export default function App() {
             onInputChange={setInput}
             onSubmit={(file) => sendMessage(input, file)}
             isLoading={isLoading}
-            onExampleClick={submitExample}
+            recommendations={homeRecs}
           />
         </section>
 

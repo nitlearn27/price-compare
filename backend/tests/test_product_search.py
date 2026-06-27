@@ -90,6 +90,21 @@ def test_normalize_no_discount_when_prices_equal():
     assert listing.discount is None
 
 
+def test_normalize_reads_weight_text():
+    record = make_record(Weight__c="500 g")
+    assert _normalize(record).weight == "500 g"
+
+
+def test_normalize_formats_numeric_weight():
+    # Whole numbers drop the trailing ".0"; fractional values are kept.
+    assert _normalize(make_record(Weight__c=500.0)).weight == "500"
+    assert _normalize(make_record(Weight__c=0.5)).weight == "0.5"
+
+
+def test_normalize_weight_absent_is_none():
+    assert _normalize(make_record()).weight is None  # no Weight__c in defaults
+
+
 def test_normalize_handles_missing_optional_fields():
     record = make_record(
         Current_Price__c=None,

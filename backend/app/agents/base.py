@@ -60,6 +60,11 @@ class SourceAgent:
     """Base class for a spoke agent. Subclasses implement ``search``."""
 
     name: str = "source"
+    # For a LIVE spoke, the catalog ``source__c`` value it corresponds to (e.g.
+    # "Flipkart"). The aggregator skips this spoke when the catalog already has
+    # results from this source. None ⇒ always treated as uncovered (e.g. the
+    # catalog spoke itself, which has no live counterpart).
+    covers_source: str | None = None
 
     async def search(
         self, query: str, limit: int, filters: "SearchFilters | None" = None

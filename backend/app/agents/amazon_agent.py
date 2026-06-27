@@ -11,6 +11,7 @@ from app.agents.base import SearchFilters, SourceAgent, SourceResult
 
 class AmazonAgent(SourceAgent):
     name = "amazon"
+    covers_source = "Amazon"  # catalog source__c this live spoke can stand in for
 
     async def search(
         self, query: str, limit: int, filters: SearchFilters | None = None

@@ -92,6 +92,17 @@ describe("ComparisonTable", () => {
     expect(screen.getAllByText(/^New$/)).toHaveLength(1);
   });
 
+  it("renders the weight value", () => {
+    render(
+      <ComparisonTable
+        results={[makeListing({ weight: "500 g" })]}
+        loading={false}
+        error={null}
+      />,
+    );
+    expect(screen.getByText("500 g")).toBeInTheDocument();
+  });
+
   it("renders availability text", () => {
     render(
       <ComparisonTable

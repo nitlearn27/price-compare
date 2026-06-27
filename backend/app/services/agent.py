@@ -179,6 +179,7 @@ def _compact(p: ProductListing) -> dict:
         "title": p.title,
         "source": p.source,
         "origin": p.origin,  # "catalog" or "live" (direct from website)
+        "weight": p.weight,
         "current_price": p.current_price,
         "original_price": p.original_price,
         "discount": p.discount,

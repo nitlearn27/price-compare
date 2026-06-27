@@ -54,6 +54,16 @@ def override_settings(monkeypatch):
     get_settings.cache_clear()
 
 
+@pytest.fixture(autouse=True)
+def _clear_recommendation_cache():
+    """The next-purchase cache is module-level state; reset it around each test."""
+    import app.services.recommendations as rec_mod
+
+    rec_mod._cache.clear()
+    yield
+    rec_mod._cache.clear()
+
+
 @pytest.fixture
 def client():
     return TestClient(app)

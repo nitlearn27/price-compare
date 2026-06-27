@@ -64,6 +64,7 @@ def _normalize_flipkart(item: dict, index: int) -> ProductListing:
 
     rating_value = _ci_get(item, "rating")
     product_url = _ci_get(item, "product_url", "url")
+    weight_value = _ci_get(item, "weight")
 
     return ProductListing(
         id=str(product_url or _ci_get(item, "id") or f"flipkart-{index}"),
@@ -79,6 +80,7 @@ def _normalize_flipkart(item: dict, index: int) -> ProductListing:
         product_url=product_url,
         image_url=_ci_get(item, "image_url", "image"),
         availability=_ci_get(item, "availability"),
+        weight=str(weight_value) if weight_value is not None else None,
         last_ordered_date=None,
         times_purchased=None,
         buy_suggestion="new",

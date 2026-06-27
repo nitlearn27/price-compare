@@ -17,6 +17,18 @@ def _safe_int(value) -> int | None:
         return None
 
 
+def _fmt_weight(value) -> str | None:
+    """Weight__c may be numeric (e.g. 0.5) or text (e.g. "500 g"). Render it as a
+    clean string for display, dropping a trailing ".0" on whole numbers."""
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        f = float(value)
+        return str(int(f)) if f.is_integer() else str(f)
+    text = str(value).strip()
+    return text or None
+
+
 def _ci_get(record: dict, key: str):
     """Case-insensitive lookup. Salesforce returns custom field names with
     whatever case is stored in metadata — defending against both `Title__c`
@@ -123,6 +135,7 @@ def _normalize(record: dict, today: date | None = None) -> ProductListing:
         product_url=_ci_get(record, "Product_URL__c"),
         image_url=_ci_get(record, "Image_URL__c"),
         availability=_ci_get(record, "Availability__c"),
+        weight=_fmt_weight(_ci_get(record, "Weight__c")),
         last_ordered_date=str(last_ordered_raw)[:10] if last_ordered_raw else None,
         times_purchased=times_purchased,
         buy_suggestion=buy_suggestion,

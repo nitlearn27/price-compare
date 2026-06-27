@@ -15,7 +15,7 @@ interface Props {
   error: string | null;
 }
 
-const COLUMN_COUNT = 11;
+const COLUMN_COUNT = 12;
 
 function formatINR(amount: number | null): string {
   if (amount === null) return "—";
@@ -155,6 +155,7 @@ function TableHeader() {
     { label: STRINGS.columnTrend, align: "right" },
     { label: STRINGS.columnRating, align: "right" },
     { label: STRINGS.columnAvailability, align: "left" },
+    { label: STRINGS.columnWeight, align: "left" },
     { label: STRINGS.columnLastOrdered, align: "left" },
     { label: STRINGS.columnSuggestion, align: "center" },
     { label: STRINGS.columnLink, align: "left" },
@@ -305,6 +306,15 @@ function ProductRow({ item, isTopMatch, accent }: ProductRowProps) {
         )}
       </td>
 
+      {/* Weight */}
+      <td className="px-4 py-2.5 text-xs whitespace-nowrap">
+        {item.weight ? (
+          <span className="text-white/80">{item.weight}</span>
+        ) : (
+          <span className="text-white/25">—</span>
+        )}
+      </td>
+
       {/* Last ordered date */}
       <td className="px-4 py-2.5 text-xs text-white/70 whitespace-nowrap">
         {formatDate(item.last_ordered_date)}
@@ -439,6 +449,7 @@ function MobileCard({ item, isTopMatch, accent }: ProductRowProps) {
       {/* Meta: availability · last ordered · buy suggestion */}
       <div className="grid grid-cols-2 gap-x-3 gap-y-2 mt-3 pt-3 border-t border-white/[0.08]">
         <Meta label={STRINGS.columnAvailability} value={item.availability ?? "—"} />
+        <Meta label={STRINGS.columnWeight} value={item.weight ?? "—"} />
         <Meta label={STRINGS.columnLastOrdered} value={formatDate(item.last_ordered_date)} />
         {item.buy_suggestion && (
           <div className="col-span-2 flex items-center gap-2">

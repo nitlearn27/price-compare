@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 async def next_purchase(req: RecommendationRequest) -> RecommendationResponse:
     user_input = req.user_input.strip() or "Give recommendations"
     try:
-        return await fetch_next_purchase(user_input)
+        return await fetch_next_purchase(user_input, refresh=req.refresh)
     except Exception as exc:
         logger.exception("Recommendation endpoint error")
         raise HTTPException(

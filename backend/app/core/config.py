@@ -30,13 +30,17 @@ class Settings(BaseSettings):
     agent_history_limit: int = 30  # cap items returned by get_purchase_history
 
     # Hub-spoke aggregator — per-spoke wall-clock timeout (seconds). A slow source
-    # (e.g. live Flipkart) is dropped after this so it can't block the others.
-    aggregator_spoke_timeout: float = 25.0
+    # is dropped after this so it can't block the others. Live store scrapes
+    # (login + visiting several product pages) routinely take 30-60s, so this must
+    # be generous; kept under the Flipkart httpx read timeout (120s).
+    aggregator_spoke_timeout: float = 90.0
     # Annotate live results (e.g. Flipkart) with the user's purchase history.
     aggregator_enrich_history: bool = True
     aggregator_history_days: int = 90  # look-back window for the history map
-    # Tiered fan-out: query the catalog (Salesforce) first; only hit the live
-    # store websites when the catalog returns FEWER than this many results.
+    # Tiered fan-out: query the catalog (Salesforce) first; for each live source
+    # (Flipkart, Amazon) hit its website only when the catalog returned FEWER than
+    # this many results FOR THAT SOURCE. Default 1 = skip a source's live call
+    # whenever the catalog already has at least one product from it.
     aggregator_min_catalog_results: int = 1
 
     # Product refresh triggers (fire-and-forget, no auth)
@@ -52,6 +56,8 @@ class Settings(BaseSettings):
     recommendation_api_url: str = (
         "https://insight-generation-production.up.railway.app/api/insights/next-purchase"
     )
+    # Cache the engine's response this long so we don't call it on every app open.
+    recommendation_cache_ttl_seconds: int = 3600  # 1 hour
 
     # Cart checkout (bulk order submission) — external purchasing apps
     cart_flipkart_url: str = "https://purchase-history-production.up.railway.app/api/cart"

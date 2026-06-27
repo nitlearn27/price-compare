@@ -38,6 +38,7 @@ class ProductListing(BaseModel):
     product_url: str | None = None
     image_url: str | None = None
     availability: str | None = None
+    weight: str | None = None
     last_ordered_date: str | None = None
     times_purchased: int | None = None
     buy_suggestion: BuySuggestion | None = None
@@ -60,6 +61,8 @@ class ProductSearchResponse(BaseModel):
 class RecommendationRequest(BaseModel):
     # Optional free-text preference; blank is coerced to the default by the router.
     user_input: str = "Give recommendations"
+    # When true, bypass the server-side cache and re-fetch from the engine.
+    refresh: bool = False
 
 
 class RecommendationItem(BaseModel):
