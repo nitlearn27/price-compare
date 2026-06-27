@@ -37,6 +37,8 @@ export const STRINGS = {
   columnLink: "Link",
 
   topMatchBadge: "Top match",
+  liveResultBadge: "New",
+  liveResultTooltip: "Fetched live from the store website",
   viewButtonLabel: "View",
   noRankLabel: "—",
 

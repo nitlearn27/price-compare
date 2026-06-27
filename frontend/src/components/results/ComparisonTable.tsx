@@ -183,6 +183,18 @@ function TableHeader() {
   );
 }
 
+/** Marks a result fetched live from the store website (not from the catalog). */
+function LiveBadge() {
+  return (
+    <span
+      className="inline-flex items-center text-[10px] font-medium uppercase tracking-wide text-amber-300 bg-amber-400/15 ring-1 ring-amber-400/30 rounded-full px-2 py-0.5"
+      title={STRINGS.liveResultTooltip}
+    >
+      {STRINGS.liveResultBadge}
+    </span>
+  );
+}
+
 interface SourceGroupProps {
   source: string;
   items: ProductListing[];
@@ -243,11 +255,14 @@ function ProductRow({ item, isTopMatch, accent }: ProductRowProps) {
             >
               {item.title}
             </p>
-            {isTopMatch && (
-              <span className="inline-flex items-center mt-1.5 text-[10px] font-medium uppercase tracking-wide text-emerald-300 bg-emerald-400/15 ring-1 ring-emerald-400/30 rounded-full px-2 py-0.5">
-                {STRINGS.topMatchBadge}
-              </span>
-            )}
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              {isTopMatch && (
+                <span className="inline-flex items-center text-[10px] font-medium uppercase tracking-wide text-emerald-300 bg-emerald-400/15 ring-1 ring-emerald-400/30 rounded-full px-2 py-0.5">
+                  {STRINGS.topMatchBadge}
+                </span>
+              )}
+              {item.origin === "live" && <LiveBadge />}
+            </div>
           </div>
         </div>
       </td>
@@ -381,6 +396,7 @@ function MobileCard({ item, isTopMatch, accent }: ProductRowProps) {
                 {STRINGS.topMatchBadge}
               </span>
             )}
+            {item.origin === "live" && <LiveBadge />}
           </div>
         </div>
       </div>

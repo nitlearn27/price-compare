@@ -83,6 +83,15 @@ describe("ComparisonTable", () => {
     expect(badges).toHaveLength(1);
   });
 
+  it("renders a 'New' badge only for live (website) results", () => {
+    const results = [
+      makeListing({ id: "1", source: "Amazon", origin: "catalog" }),
+      makeListing({ id: "2", source: "Flipkart", title: "Live item", origin: "live" }),
+    ];
+    render(<ComparisonTable results={results} loading={false} error={null} />);
+    expect(screen.getAllByText(/^New$/)).toHaveLength(1);
+  });
+
   it("renders availability text", () => {
     render(
       <ComparisonTable

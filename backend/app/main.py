@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
-from app.routers import cart, chat, identify, orders, products, recommendations
+from app.routers import agent, cart, chat, identify, orders, products, recommendations
 
 # Resolved once at import time: works in Docker (/app/dist) and is absent in local dev
 _DIST_DIR = Path(__file__).parent.parent / "dist"
@@ -48,6 +48,7 @@ def create_app() -> FastAPI:
         )
 
     # API routes must be registered before the static-files catch-all
+    app.include_router(agent.router, prefix="/api")
     app.include_router(chat.router, prefix="/api")
     app.include_router(identify.router, prefix="/api")
     app.include_router(products.router, prefix="/api")

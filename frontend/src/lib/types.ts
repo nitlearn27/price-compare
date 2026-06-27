@@ -16,10 +16,14 @@ export interface ProductQuery {
 
 export type BuySuggestion = "frequent" | "restock" | "recent" | "new";
 
+export type Origin = "catalog" | "live";
+
 export interface ProductListing {
   id: string;
   title: string;
   source: string;
+  /** "catalog" (Salesforce) or "live" (fetched directly from the store website). */
+  origin?: Origin | null;
   current_price: number | null;
   original_price: number | null;
   last_purchased_price: number | null;
@@ -43,6 +47,19 @@ export interface ChatRequest {
 export interface ChatResponse {
   reply: string;
   product_query: ProductQuery | null;
+}
+
+export interface AgentCartItem {
+  id: string;
+  name: string;
+  source: string | null;
+}
+
+export interface AgentResponse {
+  reply: string;
+  results: ProductListing[];
+  cart: AgentCartItem[];
+  checkout: CartCheckoutResponse | null;
 }
 
 export interface ProductSearchResponse {

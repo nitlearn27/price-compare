@@ -17,6 +17,28 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_model: str = "openai/gpt-oss-120b"
 
+    # DeepSeek (primary chat/agent model — OpenAI-compatible API)
+    deepseek_api_key: str = ""
+    deepseek_model: str = "deepseek-v4-flash"
+    deepseek_base_url: str = "https://api.deepseek.com/v1/chat/completions"
+
+    # Agent guardrails — keep the tool-use loop bounded in steps and tokens
+    agent_max_steps: int = 6  # max loop iterations
+    agent_max_output_tokens: int = 1024  # max_tokens per model call
+    agent_token_budget: int = 20000  # stop looping once cumulative usage exceeds this
+    agent_max_tool_calls_per_step: int = 4
+    agent_history_limit: int = 30  # cap items returned by get_purchase_history
+
+    # Hub-spoke aggregator — per-spoke wall-clock timeout (seconds). A slow source
+    # (e.g. live Flipkart) is dropped after this so it can't block the others.
+    aggregator_spoke_timeout: float = 25.0
+    # Annotate live results (e.g. Flipkart) with the user's purchase history.
+    aggregator_enrich_history: bool = True
+    aggregator_history_days: int = 90  # look-back window for the history map
+    # Tiered fan-out: query the catalog (Salesforce) first; only hit the live
+    # store websites when the catalog returns FEWER than this many results.
+    aggregator_min_catalog_results: int = 1
+
     # Product refresh triggers (fire-and-forget, no auth)
     refresh_amazon_url: str = ""
     refresh_flipkart_url: str = ""

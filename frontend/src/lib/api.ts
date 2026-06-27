@@ -1,4 +1,5 @@
 import type {
+  AgentResponse,
   CartCheckoutRequest,
   CartCheckoutResponse,
   ChatRequest,
@@ -39,6 +40,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 
 export const api = {
   chat: (req: ChatRequest): Promise<ChatResponse> => post("/chat", req),
+  agentChat: (req: ChatRequest): Promise<AgentResponse> => post("/agent/chat", req),
   identifyImage: (req: IdentifyRequest): Promise<IdentifyResponse> => post("/identify", req),
   searchProducts: (query: ProductQuery): Promise<ProductSearchResponse> =>
     post("/products/search", query),

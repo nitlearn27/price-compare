@@ -18,12 +18,16 @@ class ProductQuery(BaseModel):
 
 
 BuySuggestion = Literal["frequent", "restock", "recent", "new"]
+Origin = Literal["catalog", "live"]
 
 
 class ProductListing(BaseModel):
     id: str
     title: str
     source: str
+    # Where this listing came from: "catalog" (Salesforce) or "live" (fetched
+    # directly from the store's website). Live results are highlighted as new.
+    origin: Origin | None = None
     current_price: float | None = None
     original_price: float | None = None
     last_purchased_price: float | None = None
@@ -79,6 +83,19 @@ class CartCheckoutRequest(BaseModel):
 class CartCheckoutResponse(BaseModel):
     submitted: int  # count of products sent
     detail: str  # human-readable confirmation
+
+
+class AgentCartItem(BaseModel):
+    id: str  # f"{source}:{title}" — cart membership key, matches the FE CartItem shape
+    name: str
+    source: str | None = None
+
+
+class AgentResponse(BaseModel):
+    reply: str
+    results: list[ProductListing] = []
+    cart: list[AgentCartItem] = []
+    checkout: CartCheckoutResponse | None = None
 
 
 class RefreshRequest(BaseModel):

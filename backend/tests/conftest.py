@@ -26,6 +26,8 @@ def override_settings(monkeypatch):
         sf_results_per_source=3,
         openrouter_api_key="test_openrouter_key",
         openrouter_model="openai/gpt-4o",
+        deepseek_api_key="test_deepseek_key",
+        deepseek_model="deepseek-test",
         refresh_amazon_url="https://refresh.test/amazon",
         refresh_flipkart_url="https://refresh.test/flipkart",
         refresh_orders=2,

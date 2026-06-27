@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import type { UIMessage, CartItem } from "../lib/types";
 import { api } from "../lib/api";
-import { STRINGS } from "../lib/strings";
 import { useProductSearch } from "./useProductSearch";
 
 let _idCounter = 0;
@@ -73,16 +72,19 @@ export function useChat(cart?: { add: (item: CartItem) => void }) {
             ...messages,
             { role: "user" as const, content: trimmed },
           ];
-          const chatResp = await api.chat({ messages: history });
-          addMessage("assistant", chatResp.reply);
+          // The agent runs a tool-use loop server-side: it searches, reasons over
+          // the results (falling back to live Flipkart itself when needed), and
+          // returns the chat reply, the comparison table, and any cart additions
+          // in a single response.
+          productSearch.setLoading(true);
+          const agentResp = await api.agentChat({ messages: history });
+          addMessage("assistant", agentResp.reply);
+          productSearch.setResults(agentResp.results, "salesforce");
 
-          if (chatResp.product_query) {
-            const count = await productSearch.search(chatResp.product_query);
-            // Nothing in the internal catalog → fall back to live Flipkart results.
-            if (count === 0) {
-              addMessage("assistant", STRINGS.flipkartFallbackMessage);
-              await productSearch.searchFlipkart(chatResp.product_query);
-            }
+          if (cart) {
+            agentResp.cart.forEach((item) =>
+              cart.add({ id: item.id, name: item.name, source: item.source }),
+            );
           }
         }
       } catch (err) {
