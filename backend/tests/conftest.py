@@ -33,6 +33,8 @@ def override_settings(monkeypatch):
         refresh_orders=2,
         otp_api_url="https://otp.test/api/otp",
         search_product_flipkart_url="https://flipkart.test/search",
+        search_product_amazon_url="https://amazon.test/search",
+        recommendation_api_url="https://insight-generation-production.up.railway.app/api/insights/next-purchase",
         cors_allow_origins="http://localhost:5173",
         log_level="DEBUG",
     )

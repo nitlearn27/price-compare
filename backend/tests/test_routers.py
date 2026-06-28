@@ -194,6 +194,44 @@ def test_flipkart_search_upstream_error_returns_502(client):
     assert resp.status_code == 502
 
 
+# ── /api/products/search/amazon ──────────────────────────────────────────────
+
+
+def test_amazon_search_success(client):
+    listings = [ProductListing(**_make_listing(source="Amazon", buy_suggestion="new"))]
+    with patch(
+        "app.routers.products.search_amazon",
+        new_callable=AsyncMock,
+        return_value=listings,
+    ):
+        resp = client.post(
+            "/api/products/search/amazon",
+            json={"query": "OnePlus 12"},
+        )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["results"]) == 1
+    assert data["results"][0]["source"] == "Amazon"
+
+
+def test_amazon_search_empty_query_rejected(client):
+    resp = client.post("/api/products/search/amazon", json={"query": "   "})
+    assert resp.status_code in (400, 422)
+
+
+def test_amazon_search_upstream_error_returns_502(client):
+    with patch(
+        "app.routers.products.search_amazon",
+        new_callable=AsyncMock,
+        side_effect=Exception("Amazon down"),
+    ):
+        resp = client.post(
+            "/api/products/search/amazon",
+            json={"query": "OnePlus 12"},
+        )
+    assert resp.status_code == 502
+
+
 # ── /api/products/live (progressive phase 2) ──────────────────────────────────
 
 

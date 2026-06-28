@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { api } from "../lib/api";
 import { STRINGS } from "../lib/strings";
 import type { RefreshSource } from "../lib/types";
@@ -19,7 +19,7 @@ export interface UseRefresh {
   otpSubmitting: boolean;
   /** Error surfaced inside the OTP modal, else null. */
   otpError: string | null;
-  /** Trigger a store refresh. Amazon additionally opens the OTP modal on success. */
+  /** Trigger a store refresh. */
   refresh: (source: RefreshSource) => Promise<void>;
   /** Submit the entered OTP code. Closes the modal on success. */
   submitOtp: (code: string) => Promise<void>;
@@ -27,6 +27,10 @@ export interface UseRefresh {
   closeOtp: () => void;
   /** Dismiss the transient status toast. */
   dismissStatus: () => void;
+  /** Whether Amazon OTP is available to be entered. */
+  amazonOtpAvailable: boolean;
+  /** Open the Amazon OTP modal. */
+  openOtp: () => void;
 }
 
 export function useRefresh(): UseRefresh {
@@ -35,17 +39,41 @@ export function useRefresh(): UseRefresh {
   const [otpOpen, setOtpOpen] = useState(false);
   const [otpSubmitting, setOtpSubmitting] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
+  const [amazonOtpAvailable, setAmazonOtpAvailable] = useState(false);
+
+  const otpTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (otpTimeoutRef.current) {
+        clearTimeout(otpTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const refresh = useCallback(
     async (source: RefreshSource) => {
       if (refreshing) return;
       setRefreshing(source);
       setStatus(null);
+
+      if (source === "amazon") {
+        setAmazonOtpAvailable(false);
+        if (otpTimeoutRef.current) {
+          clearTimeout(otpTimeoutRef.current);
+          otpTimeoutRef.current = null;
+        }
+      }
+
       try {
         await api.refreshOrders(source);
         if (source === "amazon") {
           setOtpError(null);
-          setOtpOpen(true);
+          setAmazonOtpAvailable(true);
+          otpTimeoutRef.current = setTimeout(() => {
+            setAmazonOtpAvailable(false);
+          }, 3 * 60 * 1000); // 3 minutes
           setStatus({ kind: "success", msg: STRINGS.refreshAmazonSuccess });
         } else {
           setStatus({ kind: "success", msg: STRINGS.refreshFlipkartSuccess });
@@ -70,6 +98,11 @@ export function useRefresh(): UseRefresh {
       try {
         await api.submitOtp(code);
         setOtpOpen(false);
+        setAmazonOtpAvailable(false);
+        if (otpTimeoutRef.current) {
+          clearTimeout(otpTimeoutRef.current);
+          otpTimeoutRef.current = null;
+        }
         setStatus({ kind: "success", msg: STRINGS.otpSuccess });
       } catch (err) {
         setOtpError(err instanceof Error ? err.message : STRINGS.otpError);
@@ -81,6 +114,10 @@ export function useRefresh(): UseRefresh {
   );
 
   const closeOtp = useCallback(() => setOtpOpen(false), []);
+  const openOtp = useCallback(() => {
+    setOtpError(null);
+    setOtpOpen(true);
+  }, []);
   const dismissStatus = useCallback(() => setStatus(null), []);
 
   return {
@@ -93,5 +130,7 @@ export function useRefresh(): UseRefresh {
     submitOtp,
     closeOtp,
     dismissStatus,
+    amazonOtpAvailable,
+    openOtp,
   };
 }

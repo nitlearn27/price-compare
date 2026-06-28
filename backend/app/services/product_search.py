@@ -145,17 +145,36 @@ def _normalize(record: dict, today: date | None = None) -> ProductListing:
 
 def rank_and_group(
     records: list[dict],
-    query: str,  # noqa: ARG001 — retained for API compatibility
+    query: str,
     per_source: int = 3,
 ) -> list[ProductListing]:
+    from app.services.salesforce import _filter_tokens
+    query_tokens = _filter_tokens(query.split()) if query else []
+    if not query_tokens:
+        query_tokens = query.lower().split() if query else []
+    query_tokens = [t.lower() for t in query_tokens]
+
+    def get_relevance(record: dict) -> int:
+        title = _ci_get(record, "Title__c") or _ci_get(record, "Name") or ""
+        title_lower = title.lower()
+        return sum(1 for t in query_tokens if t in title_lower)
+
     groups: dict[str, list[tuple]] = {}
+    has_any_match = any(get_relevance(r) > 0 for r in records) if query_tokens else False
+
     for record in records:
         source = _ci_get(record, "Source__c") or "Unknown"
-        groups.setdefault(source, []).append((_score(record), record))
+        relevance = get_relevance(record)
+        # Discard completely irrelevant results that matched a loose OR query
+        # only if we found at least one record that actually matches the keywords
+        if has_any_match and relevance == 0:
+            continue
+        groups.setdefault(source, []).append(((relevance, _score(record)), record))
 
     result: list[ProductListing] = []
     for _source, items in groups.items():
-        items.sort(key=lambda x: x[0], reverse=True)
+        # Sort by relevance desc, then times desc, then rank_score desc (asc rank)
+        items.sort(key=lambda x: (x[0][0], x[0][1][0], x[0][1][1]), reverse=True)
         for _, record in items[:per_source]:
             result.append(_normalize(record))
     return result

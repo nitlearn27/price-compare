@@ -32,6 +32,8 @@ _STOPWORDS = frozenset(
         "please", "kindly",
         "is", "are", "available", "availability",
         "and", "or",
+        "fresh", "natural", "organic", "pure", "local", "premium", "farm", "healthy",
+        "packet", "pouch", "pack", "kg", "g", "gm", "ml", "litre", "ltr",
     }
 )
 

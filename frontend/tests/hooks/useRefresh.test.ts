@@ -31,7 +31,7 @@ describe("useRefresh", () => {
     expect(result.current.refreshing).toBeNull();
   });
 
-  it("amazon refresh opens the OTP modal on success", async () => {
+  it("amazon refresh makes OTP available on success, and calling openOtp opens the OTP modal", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse());
     const { result } = renderHook(() => useRefresh());
 
@@ -39,8 +39,14 @@ describe("useRefresh", () => {
       await result.current.refresh("amazon");
     });
 
-    expect(result.current.otpOpen).toBe(true);
+    expect(result.current.amazonOtpAvailable).toBe(true);
+    expect(result.current.otpOpen).toBe(false);
     expect(result.current.status?.kind).toBe("success");
+
+    act(() => {
+      result.current.openOtp();
+    });
+    expect(result.current.otpOpen).toBe(true);
   });
 
   it("sets an error status when refresh fails", async () => {
@@ -55,6 +61,7 @@ describe("useRefresh", () => {
 
     expect(result.current.status?.kind).toBe("error");
     expect(result.current.otpOpen).toBe(false);
+    expect(result.current.amazonOtpAvailable).toBe(false);
   });
 
   it("submitOtp closes the modal on success", async () => {
@@ -67,6 +74,12 @@ describe("useRefresh", () => {
     await act(async () => {
       await result.current.refresh("amazon");
     });
+    expect(result.current.amazonOtpAvailable).toBe(true);
+    expect(result.current.otpOpen).toBe(false);
+
+    act(() => {
+      result.current.openOtp();
+    });
     expect(result.current.otpOpen).toBe(true);
 
     await act(async () => {
@@ -74,6 +87,7 @@ describe("useRefresh", () => {
     });
 
     expect(result.current.otpOpen).toBe(false);
+    expect(result.current.amazonOtpAvailable).toBe(false);
     expect(result.current.otpError).toBeNull();
     // The entered code is forwarded to /api/otp.
     const lastCall = fetchMock.mock.calls.at(-1);
@@ -92,11 +106,36 @@ describe("useRefresh", () => {
     await act(async () => {
       await result.current.refresh("amazon");
     });
+
+    act(() => {
+      result.current.openOtp();
+    });
+    expect(result.current.otpOpen).toBe(true);
+
     await act(async () => {
       await result.current.submitOtp("000000");
     });
 
     expect(result.current.otpOpen).toBe(true);
     expect(result.current.otpError).toBe("bad code");
+  });
+
+  it("reverts amazonOtpAvailable to false after 3 minutes", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse());
+    const { result } = renderHook(() => useRefresh());
+
+    await act(async () => {
+      await result.current.refresh("amazon");
+    });
+
+    expect(result.current.amazonOtpAvailable).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(3 * 60 * 1000);
+    });
+
+    expect(result.current.amazonOtpAvailable).toBe(false);
+    vi.useRealTimers();
   });
 });

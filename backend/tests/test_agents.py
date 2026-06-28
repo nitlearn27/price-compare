@@ -67,10 +67,19 @@ async def test_flipkart_agent(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_amazon_agent_is_placeholder():
+async def test_amazon_agent(monkeypatch):
+    import app.agents.amazon_agent as am_mod
+
+    async def fake_amazon(query, limit):
+        return [listing("u1", "Carrot 1kg", "Amazon")]
+
+    monkeypatch.setattr(am_mod, "search_amazon", fake_amazon)
     res = await AmazonAgent().search("carrot", 3)
-    assert res.status == "not_implemented"
-    assert res.listings == []
+
+    assert res.status == "ok"
+    assert res.source == "Amazon (live)"
+    assert res.listings[0].source == "Amazon"
+    assert res.listings[0].origin == "live"
 
 
 # ───────────────────────── Aggregator (hub) ─────────────────────────

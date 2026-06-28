@@ -3,7 +3,7 @@ import time
 
 import httpx
 
-from app.core.config import get_settings
+from app.core import config
 from app.core.logging import get_logger
 from app.models.schemas import RecommendationResponse
 
@@ -24,7 +24,7 @@ async def fetch_next_purchase(
     ``refresh=True`` bypasses the cache and re-populates it. Exceptions (HTTP
     errors, timeouts, malformed payloads) propagate; the router maps them to a 502.
     """
-    s = get_settings()
+    s = config.get_settings()
     key = user_input.strip().lower()
 
     async with _lock:

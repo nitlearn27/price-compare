@@ -84,7 +84,8 @@ export const STRINGS = {
   refreshAmazon: "Refresh Amazon",
   refreshFlipkart: "Refresh Flipkart",
   refreshing: "Refreshing…",
-  refreshAmazonSuccess: "Amazon refresh started. Enter the OTP to continue.",
+  enterAmazonOtp: "Enter Amazon OTP",
+  refreshAmazonSuccess: "Amazon refresh completed. Click 'Enter Amazon OTP' if you need to submit an OTP.",
   refreshFlipkartSuccess: "Flipkart refresh started. Updated data will appear shortly.",
   refreshError: "Couldn't start the refresh. Please try again.",
 

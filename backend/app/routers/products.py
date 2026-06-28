@@ -5,6 +5,7 @@ from app.agents.base import SearchFilters
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.models.schemas import ProductQuery, ProductSearchResponse
+from app.services.amazon_search import search_amazon
 from app.services.flipkart_search import search_flipkart
 from app.services.product_search import rank_and_group
 from app.services.salesforce import salesforce_client
@@ -48,6 +49,24 @@ async def search_products_flipkart(query: ProductQuery) -> ProductSearchResponse
         raise HTTPException(
             status_code=502,
             detail="The Flipkart search service is currently unavailable. Please try again.",
+        ) from exc
+
+
+@router.post("/products/search/amazon", response_model=ProductSearchResponse)
+async def search_products_amazon(query: ProductQuery) -> ProductSearchResponse:
+    """Live Amazon fallback — used by the frontend when the catalog search is empty."""
+    if not query.query.strip():
+        raise HTTPException(status_code=400, detail="Search query must not be empty.")
+
+    s = get_settings()
+    try:
+        results = await search_amazon(query.query, s.sf_results_per_source)
+        return ProductSearchResponse(results=results)
+    except Exception as exc:
+        logger.exception("Amazon search endpoint error")
+        raise HTTPException(
+            status_code=502,
+            detail="The Amazon search service is currently unavailable. Please try again.",
         ) from exc
 
 

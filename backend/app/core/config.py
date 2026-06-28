@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     # External service: GET ?name=<product> → Flipkart products as JSON.
     search_product_flipkart_url: str = ""
 
+    # Amazon live keyword search — fallback when the Salesforce catalog is empty.
+    # External service: GET ?q=<product> → Amazon products as JSON.
+    search_product_amazon_url: str = ""
+
     # Recommendation engine ("next purchase" insights) — external service
     recommendation_api_url: str = (
         "https://insight-generation-production.up.railway.app/api/insights/next-purchase"

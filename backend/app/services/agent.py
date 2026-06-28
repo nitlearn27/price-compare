@@ -52,10 +52,10 @@ _SYSTEM_PROMPT = (
     "1. Call `search_products` with only the core keywords (strip filler like 'give me', "
     "'price of', 'best', 'cheap'). This searches ALL sources at once (Salesforce catalog + "
     "live Flipkart + Amazon) and returns merged results plus a per-source status.\n"
-    "2. Read the results. If they are weak, you may `refresh_products` to re-scrape a store "
-    "and search again. The `sources` field tells you which sources responded. The `live_pending` "
-    "field lists sources still being fetched live — their rows appear in the table shortly, so "
-    "mention they're on the way rather than saying nothing was found.\n"
+    "2. Read the results. Do NOT call `refresh_products` automatically on search unless the user "
+    "explicitly asks to refresh/sync their store. The `sources` field tells you which sources "
+    "responded. The `live_pending` field lists sources still being fetched live — their rows "
+    "appear in the table shortly, so mention they're on the way rather than saying nothing was found.\n"
     "3. Recommend the BEST option. Weigh current_price (lower is better), rating, "
     "discount, and the user's own history (times_purchased, buy_suggestion — 'restock' "
     "and 'frequent' items are ones they rely on). State your pick in 1-2 lines citing the "
@@ -118,8 +118,8 @@ _TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "refresh_products",
-            "description": "Trigger a re-scrape of a store's catalog into Salesforce. Use "
-            "when the user asks to refresh/update a store, or when data looks stale.",
+            "description": "Trigger a sync of a store's purchase history and catalog into Salesforce. "
+            "ONLY call this when the user explicitly requests to refresh, update, or sync a store.",
             "parameters": {
                 "type": "object",
                 "required": ["source"],
