@@ -1,13 +1,28 @@
 import asyncio
+from datetime import date
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.core.logging import get_logger
 from app.models.schemas import ProductListing
+from app.services.cart_analysis import analyze_restock_candidates
 from app.services.gemini import identify_products_in_image
-from app.services.product_search import _ci_get, _normalize, _safe_float, _safe_int, rank_and_group
+from app.services.product_search import (
+    _ci_get,
+    _normalize,
+    _parse_sf_date,
+    _safe_float,
+    _safe_int,
+    rank_and_group,
+)
 from app.services.salesforce import salesforce_client
+
+# Restock discovery & gating windows (tunable).
+# Look this far back for the user's regular staples...
+_RESTOCK_LOOKBACK_DAYS = 30
+# ...but never re-order something bought within this many days — it's still fresh.
+_RECENT_PURCHASE_SKIP_DAYS = 5
 
 router = APIRouter(tags=["identify"])
 logger = get_logger(__name__)
@@ -22,6 +37,7 @@ class MustHaveProduct(BaseModel):
     id: str
     title: str
     source: str
+    reason: str | None = None
 
 
 class IdentifyResponse(BaseModel):
@@ -84,20 +100,28 @@ async def identify_image(request: IdentifyRequest) -> IdentifyResponse:
             f"the comparison table on the right."
         )
 
-        # 3. Query Salesforce for recently ordered products (last 7 days) to find Must-Haves
+        # 3. Find STAPLES TO RESTOCK: items the user buys regularly that are NOT
+        #    visible in the photo. Two gates stand before the cart:
+        #      (a) deterministic freshness check — skip anything bought within the
+        #          last few days (re-ordering it would just be waste), then
+        #      (b) DeepSeek judgment — of what survives, only add items the model
+        #          decides the user has likely run out of.
+        today = date.today()
         recent_records = []
         try:
-            recent_records = await salesforce_client.get_recent_products(days=7)
+            recent_records = await salesforce_client.get_recent_products(
+                days=_RESTOCK_LOOKBACK_DAYS
+            )
         except Exception as e:
             logger.error("Failed to query recently ordered products: %s", e)
 
-        must_haves_grouped = {}
+        # Keep one best-scored record per vegetable that isn't already in the photo.
+        must_haves_grouped: dict[str, tuple] = {}
         for record in recent_records:
             title = _ci_get(record, "Title__c") or _ci_get(record, "Name") or ""
             if not is_vegetable(title):
                 continue
 
-            # Check if this recently ordered vegetable matches any visible item name
             is_visible = False
             for p_name in product_names:
                 p_norm = p_name.lower().strip()
@@ -105,41 +129,79 @@ async def identify_image(request: IdentifyRequest) -> IdentifyResponse:
                 if p_norm in t_norm or t_norm in p_norm:
                     is_visible = True
                     break
+            if is_visible:
+                continue
 
-            if not is_visible:
-                # Group by vegetable keyword to keep a single best-matched product listing
-                veg_key = "vegetable"
-                for kw in VEGETABLE_KEYWORDS:
-                    if kw in title.lower():
-                        veg_key = kw
-                        break
+            veg_key = "vegetable"
+            for kw in VEGETABLE_KEYWORDS:
+                if kw in title.lower():
+                    veg_key = kw
+                    break
 
-                times = _safe_int(_ci_get(record, "Number_Of_Times_Purchased__c")) or 0
-                rating = _safe_float(_ci_get(record, "Rating__c")) or 0.0
-                score = (times, rating)
+            times = _safe_int(_ci_get(record, "Number_Of_Times_Purchased__c")) or 0
+            rating = _safe_float(_ci_get(record, "Rating__c")) or 0.0
+            score = (times, rating)
+            if veg_key not in must_haves_grouped or score > must_haves_grouped[veg_key][0]:
+                must_haves_grouped[veg_key] = (score, record)
 
-                if veg_key not in must_haves_grouped or score > must_haves_grouped[veg_key][0]:
-                    must_haves_grouped[veg_key] = (score, record)
-
-        must_have_list = []
-        must_have_titles = []
+        # Gate (a): drop anything bought within the freshness window.
+        candidates: list[dict] = []
+        skipped_fresh: list[str] = []
         for score, record in must_haves_grouped.values():
-            normalized = _normalize(record)
-            must_have_list.append(
-                MustHaveProduct(
-                    id=normalized.id,
-                    title=normalized.title,
-                    source=normalized.source
-                )
+            normalized = _normalize(record, today)
+            last_ordered = _parse_sf_date(_ci_get(record, "Last_Ordered_Date__c"))
+            days_since = (today - last_ordered).days if last_ordered else None
+            if days_since is not None and days_since <= _RECENT_PURCHASE_SKIP_DAYS:
+                skipped_fresh.append(f"{normalized.title} ({days_since}d ago)")
+                continue
+            candidates.append(
+                {
+                    "name": normalized.title,
+                    "times": score[0],
+                    "days_since": days_since if days_since is not None else "unknown",
+                    "normalized": normalized,
+                }
             )
-            must_have_titles.append(normalized.title)
 
-        if must_have_titles:
-            must_haves_list_md = ", ".join(f"**{t}**" for t in must_have_titles)
+        # Gate (b): DeepSeek decides which survivors genuinely need restocking.
+        decisions = await analyze_restock_candidates(candidates)
+
+        must_have_list: list[MustHaveProduct] = []
+        added_lines: list[str] = []
+        declined: list[str] = []
+        for cand in candidates:
+            normalized = cand["normalized"]
+            dec = decisions.get(normalized.title.lower().strip())
+            if dec and dec.add:
+                must_have_list.append(
+                    MustHaveProduct(
+                        id=normalized.id,
+                        title=normalized.title,
+                        source=normalized.source,
+                        reason=dec.reason or None,
+                    )
+                )
+                added_lines.append(
+                    f"**{normalized.title}**" + (f" — {dec.reason}" if dec.reason else "")
+                )
+            else:
+                declined.append(normalized.title)
+
+        if added_lines:
             reply_msg += (
-                f"\n\nI noticed the following vegetables from your past 7 days' "
-                f"orders are missing: {must_haves_list_md}. I have automatically "
-                f"added them to your shopping cart."
+                "\n\nBased on your order history and a freshness check, I added these "
+                "run-low staples to your cart:\n"
+                + "\n".join(f"- {line}" for line in added_lines)
+            )
+        if skipped_fresh:
+            reply_msg += (
+                f"\n\nSkipped (bought within the last {_RECENT_PURCHASE_SKIP_DAYS} "
+                "days, so you should still have them): " + ", ".join(skipped_fresh)
+            )
+        if declined:
+            reply_msg += (
+                "\n\nReviewed but did not add (analysis judged you likely still have "
+                "stock): " + ", ".join(declined)
             )
 
         # 4. Query Salesforce for each visible product in parallel

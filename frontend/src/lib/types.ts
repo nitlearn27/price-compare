@@ -110,6 +110,8 @@ export interface MustHaveProduct {
   id: string;
   title: string;
   source: string;
+  /** Why the analysis decided to restock this item (shown in the chat reply). */
+  reason?: string;
 }
 
 export interface IdentifyResponse {
