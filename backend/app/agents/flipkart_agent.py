@@ -50,8 +50,13 @@ def _norm(value: float | None, lo: float | None, hi: float | None, invert: bool 
     return 1.0 - n if invert else n
 
 
-def rank_by_value(listings: list[ProductListing], limit: int) -> list[ProductListing]:
-    """Rank live listings by a composite value score and keep the best ``limit``."""
+def rank_by_value(
+    listings: list[ProductListing], limit: int, query: str = ""
+) -> list[ProductListing]:
+    """Rank live listings relevance-first, then by a composite value score, and
+    keep the best ``limit``. Live keyword search returns nearby items (a "carrot"
+    search also brings tomato, beetroot…), so titles that actually match the query
+    float to the top; the rest follow as alternatives ranked by value."""
     if len(listings) <= 1:
         return listings[:limit]
 
@@ -65,7 +70,13 @@ def rank_by_value(listings: list[ProductListing], limit: int) -> list[ProductLis
     d_lo, d_hi = (min(discounts), max(discounts)) if discounts else (None, None)
     v_lo, v_hi = (min(reviews), max(reviews)) if reviews else (None, None)
 
-    def score(p: ProductListing) -> float:
+    tokens = [t for t in query.lower().split() if len(t) >= 2]
+
+    def relevance(p: ProductListing) -> int:
+        title = (p.title or "").lower()
+        return 1 if any(t in title for t in tokens) else 0
+
+    def value(p: ProductListing) -> float:
         return (
             _W_RATING * _norm(_parse_rating(p.rating), r_lo, r_hi)
             + _W_PRICE * _norm(p.current_price, p_lo, p_hi, invert=True)
@@ -73,7 +84,7 @@ def rank_by_value(listings: list[ProductListing], limit: int) -> list[ProductLis
             + _W_REVIEWS * _norm(p.review_count, v_lo, v_hi)
         )
 
-    return sorted(listings, key=score, reverse=True)[:limit]
+    return sorted(listings, key=lambda p: (relevance(p), value(p)), reverse=True)[:limit]
 
 
 def _match_history(title: str, history: dict) -> ProductListing | None:
@@ -97,7 +108,7 @@ class FlipkartAgent(SourceAgent):
     ) -> SourceResult:
         candidates = await search_flipkart(query, _CANDIDATE_POOL)
         in_range = apply_filters(candidates, filters)
-        best = rank_by_value(in_range, limit)
+        best = rank_by_value(in_range, limit, query)
         for p in best:
             p.origin = "live"  # came directly from the website
         logger.info(

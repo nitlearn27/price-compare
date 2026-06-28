@@ -194,6 +194,35 @@ def test_flipkart_search_upstream_error_returns_502(client):
     assert resp.status_code == 502
 
 
+# ── /api/products/live (progressive phase 2) ──────────────────────────────────
+
+
+def test_products_live_success(client):
+    from app.agents.aggregator import AggregatedResult
+
+    listings = [
+        ProductListing(**_make_listing(source="Flipkart", origin="live", buy_suggestion="new"))
+    ]
+    with patch(
+        "app.routers.products.aggregator_agent.search_live",
+        new_callable=AsyncMock,
+        return_value=AggregatedResult(listings=listings, sources=[]),
+    ):
+        resp = client.post(
+            "/api/products/live",
+            json={"query": "carrot", "sources": ["flipkart"]},
+        )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["results"]) == 1
+    assert data["results"][0]["origin"] == "live"
+
+
+def test_products_live_empty_query_rejected(client):
+    resp = client.post("/api/products/live", json={"query": "   "})
+    assert resp.status_code in (400, 422)
+
+
 # ── Schema roundtrip ──────────────────────────────────────────────────────────
 
 

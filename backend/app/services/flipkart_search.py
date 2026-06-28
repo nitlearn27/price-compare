@@ -68,7 +68,7 @@ def _normalize_flipkart(item: dict, index: int) -> ProductListing:
 
     return ProductListing(
         id=str(product_url or _ci_get(item, "id") or f"flipkart-{index}"),
-        title=_ci_get(item, "title", "name") or "",
+        title=_ci_get(item, "title", "name", "product_name") or "",
         source="Flipkart",
         current_price=current_price,
         original_price=original_price,

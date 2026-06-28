@@ -86,6 +86,24 @@ export function useChat(cart?: { add: (item: CartItem) => void }) {
               cart.add({ id: item.id, name: item.name, source: item.source }),
             );
           }
+
+          // Phase 2: slow live-store results were deferred — fetch them now and
+          // append to the table so the user sees the fast catalog rows first.
+          const pending = agentResp.pending_live;
+          if (pending) {
+            productSearch.setLoadingLive(true);
+            try {
+              const live = await api.productsLive({
+                query: pending.query,
+                sources: pending.sources,
+                min_price: pending.min_price,
+                max_price: pending.max_price,
+              });
+              productSearch.appendResults(live.results);
+            } catch {
+              productSearch.setLoadingLive(false); // keep the catalog rows on failure
+            }
+          }
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Something went wrong. Please try again.";

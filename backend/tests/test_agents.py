@@ -225,6 +225,64 @@ async def test_aggregator_dedupes_by_source_title_prefers_history():
     assert res.listings[0].times_purchased == 7  # history-bearing entry won
 
 
+@pytest.mark.asyncio
+async def test_aggregator_does_not_collapse_empty_titles():
+    # Two distinct Flipkart rows with no title must not merge into one (guards the
+    # field-rename bug where every live row had title="").
+    live = _StubSpoke(
+        "live",
+        SourceResult(
+            "Flipkart (live)",
+            [
+                listing("u1", "", "Flipkart"),
+                listing("u2", "", "Flipkart"),
+            ],
+        ),
+    )
+    agg = AggregatorAgent(
+        primary_spokes=[], live_spokes=[live], enrich_history=False
+    )
+    res = await agg.search_live("carrot", 3)
+
+    assert {p.id for p in res.listings} == {"u1", "u2"}
+
+
+# ───────────────────── Progressive phases: search_catalog / search_live ───────
+
+
+@pytest.mark.asyncio
+async def test_search_catalog_reports_uncovered_without_running_live():
+    catalog = _StubSpoke(
+        "sf", SourceResult("Salesforce catalog", [listing("1", "Atta", "Flipkart")])
+    )
+    fk = _StubSpoke("fk", SourceResult("Flipkart (live)", []), covers_source="Flipkart")
+    am = _StubSpoke("am", SourceResult("Amazon (live)", []), covers_source="Amazon")
+
+    agg = AggregatorAgent(
+        primary_spokes=[catalog], live_spokes=[fk, am],
+        min_catalog_results=1, enrich_history=False,
+    )
+    result, uncovered = await agg.search_catalog("atta", 3)
+
+    assert len(result.listings) == 1
+    assert fk.called is False and am.called is False  # phase 1 never touches live
+    # uncovered lists spoke *names*; Flipkart (covers "Flipkart") is covered by the
+    # catalog, Amazon is not.
+    assert uncovered == ["am"]
+
+
+@pytest.mark.asyncio
+async def test_search_live_runs_only_named_sources():
+    fk = _StubSpoke("fk", SourceResult("Flipkart (live)", [listing("2", "Onion", "Flipkart")]))
+    am = _StubSpoke("am", SourceResult("Amazon (live)", [listing("3", "Onion", "Amazon")]))
+
+    agg = AggregatorAgent(primary_spokes=[], live_spokes=[fk, am], enrich_history=False)
+    result = await agg.search_live("onion", 3, source_names=["am"])  # match by spoke name
+
+    assert am.called is True and fk.called is False
+    assert {p.source for p in result.listings} == {"Amazon"}
+
+
 # ───────────────────── Flipkart capabilities: filters / ranking / enrichment ──
 
 
@@ -264,6 +322,25 @@ async def test_flipkart_agent_ranks_by_value(monkeypatch):
     res = await FlipkartAgent().search("carrot", 2)
 
     assert [p.id for p in res.listings] == ["b", "c"]  # best value first, capped at 2
+
+
+@pytest.mark.asyncio
+async def test_flipkart_agent_ranks_query_matches_first(monkeypatch):
+    """Live search returns nearby veg; the actually-searched item ranks first even
+    when it isn't the cheapest."""
+    import app.agents.flipkart_agent as fk_mod
+
+    async def fake_flipkart(query, limit):
+        return [
+            ProductListing(id="t", title="Local Tomato", source="Flipkart", current_price=14),
+            ProductListing(id="c", title="Local Carrot", source="Flipkart", current_price=25),
+            ProductListing(id="b", title="Beetroot", source="Flipkart", current_price=25),
+        ]
+
+    monkeypatch.setattr(fk_mod, "search_flipkart", fake_flipkart)
+    res = await FlipkartAgent().search("carrot", 3)
+
+    assert res.listings[0].title == "Local Carrot"  # matches "carrot" → first, despite ₹25 > ₹14
 
 
 @pytest.mark.asyncio

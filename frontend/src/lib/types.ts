@@ -56,11 +56,19 @@ export interface AgentCartItem {
   source: string | null;
 }
 
+export interface PendingLive {
+  query: string;
+  sources: string[];
+  min_price?: number | null;
+  max_price?: number | null;
+}
+
 export interface AgentResponse {
   reply: string;
   results: ProductListing[];
   cart: AgentCartItem[];
   checkout: CartCheckoutResponse | null;
+  pending_live?: PendingLive | null;
 }
 
 export interface ProductSearchResponse {

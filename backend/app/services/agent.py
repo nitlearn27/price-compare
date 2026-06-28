@@ -25,6 +25,7 @@ from app.models.schemas import (
     AgentCartItem,
     AgentResponse,
     ChatMessage,
+    PendingLive,
     ProductListing,
 )
 from app.services.cart import submit_cart
@@ -52,7 +53,9 @@ _SYSTEM_PROMPT = (
     "'price of', 'best', 'cheap'). This searches ALL sources at once (Salesforce catalog + "
     "live Flipkart + Amazon) and returns merged results plus a per-source status.\n"
     "2. Read the results. If they are weak, you may `refresh_products` to re-scrape a store "
-    "and search again. The `sources` field tells you which sources responded.\n"
+    "and search again. The `sources` field tells you which sources responded. The `live_pending` "
+    "field lists sources still being fetched live — their rows appear in the table shortly, so "
+    "mention they're on the way rather than saying nothing was found.\n"
     "3. Recommend the BEST option. Weigh current_price (lower is better), rating, "
     "discount, and the user's own history (times_purchased, buy_suggestion — 'restock' "
     "and 'frequent' items are ones they rely on). State your pick in 1-2 lines citing the "
@@ -203,6 +206,7 @@ class ShoppingAgent:
         seen_result_ids: set[str] = set()
         cart: dict[str, AgentCartItem] = {}
         last_checkout = None
+        last_pending_live = None  # slow live sources still owed to the frontend
 
         # Guardrail accounting.
         total_tokens = 0  # cumulative usage across the loop
@@ -225,6 +229,7 @@ class ShoppingAgent:
                     results=results,
                     cart=list(cart.values()),
                     checkout=last_checkout,
+                    pending_live=last_pending_live,
                 )
 
             # The assistant message that carries the tool_calls MUST be appended
@@ -250,11 +255,13 @@ class ShoppingAgent:
                     else:
                         call_counts[sig] = call_counts.get(sig, 0) + 1
                         logger.info("Agent step %d → tool %s args=%s", step, name, args)
-                        output, ckout = await self._dispatch(
+                        output, ckout, pending = await self._dispatch(
                             name, args, results, seen_result_ids, cart
                         )
                         if ckout is not None:
                             last_checkout = ckout
+                        if pending is not None:
+                            last_pending_live = pending
 
                 convo.append(
                     {
@@ -284,6 +291,7 @@ class ShoppingAgent:
             results=results,
             cart=list(cart.values()),
             checkout=last_checkout,
+            pending_live=last_pending_live,
         )
 
     async def _dispatch(
@@ -293,44 +301,60 @@ class ShoppingAgent:
         results: list[ProductListing],
         seen_result_ids: set[str],
         cart: dict[str, AgentCartItem],
-    ) -> tuple[dict, object | None]:
-        """Execute one tool; mutate UI state; return (model-visible output, checkout)."""
+    ) -> tuple[dict, object | None, PendingLive | None]:
+        """Execute one tool; mutate UI state; return (output, checkout, pending_live)."""
         s = self._settings
 
         if name == "search_products":
             query = (args.get("query") or "").strip()
             if not query:
-                return {"error": "query is required"}, None
-            # Hub-spoke fan-out: the aggregator queries every source in parallel.
+                return {"error": "query is required"}, None, None
+            # Phase 1: the fast catalog only. Slow live sources (if the catalog
+            # doesn't cover them) are returned as `pending_live` so the frontend
+            # fetches them separately and appends to the table.
             filters = SearchFilters(
                 min_price=args.get("min_price"), max_price=args.get("max_price")
             )
-            agg = await aggregator_agent.search(query, s.sf_results_per_source, filters)
-            self._absorb(agg.listings, results, seen_result_ids)
+            catalog, uncovered = await aggregator_agent.search_catalog(
+                query, s.sf_results_per_source, filters
+            )
+            self._absorb(catalog.listings, results, seen_result_ids)
+            pending = (
+                PendingLive(
+                    query=query,
+                    sources=uncovered,
+                    min_price=args.get("min_price"),
+                    max_price=args.get("max_price"),
+                )
+                if uncovered
+                else None
+            )
             return {
-                "count": len(agg.listings),
+                "count": len(catalog.listings),
                 "sources": [
                     {"source": r.source, "status": r.status, "count": len(r.listings)}
-                    for r in agg.sources
+                    for r in catalog.sources
                 ],
-                "products": [_compact(p) for p in agg.listings],
-            }, None
+                "products": [_compact(p) for p in catalog.listings],
+                # These sources are still being fetched live and will appear shortly.
+                "live_pending": uncovered,
+            }, None, pending
 
         if name == "get_purchase_history":
             days = int(args.get("days") or 30)
             records = await salesforce_client.get_recent_products(days=days)
             records = records[: s.agent_history_limit]  # guardrail: cap result size
             history = [_compact(_normalize(r)) for r in records]
-            return {"days": days, "count": len(history), "items": history}, None
+            return {"days": days, "count": len(history), "items": history}, None, None
 
         if name == "refresh_products":
             source = args.get("source", "")
             try:
                 await trigger_refresh(source)
             except ValueError as exc:
-                return {"error": str(exc)}, None
+                return {"error": str(exc)}, None, None
             label = SOURCE_LABELS.get(source, source)
-            return {"status": "triggered", "message": f"{label} refresh started."}, None
+            return {"status": "triggered", "message": f"{label} refresh started."}, None, None
 
         if name == "add_to_cart":
             added = []
@@ -342,21 +366,21 @@ class ShoppingAgent:
                 key = f"{source}:{title}".lower()
                 cart[key] = AgentCartItem(id=key, name=title, source=source or None)
                 added.append(title)
-            return {"added": added, "cart_size": len(cart)}, None
+            return {"added": added, "cart_size": len(cart)}, None, None
 
         if name == "checkout":
             if not args.get("confirmed"):
                 return {
                     "status": "confirmation_required",
                     "message": "Do not check out until the user explicitly confirms.",
-                }, None
+                }, None, None
             if not cart:
-                return {"status": "empty", "message": "Cart is empty."}, None
+                return {"status": "empty", "message": "Cart is empty."}, None, None
             result = await submit_cart([c.name for c in cart.values()])
             cart.clear()
-            return {"status": "ordered", "detail": result.detail}, result
+            return {"status": "ordered", "detail": result.detail}, result, None
 
-        return {"error": f"unknown tool {name}"}, None
+        return {"error": f"unknown tool {name}"}, None, None
 
     @staticmethod
     def _absorb(

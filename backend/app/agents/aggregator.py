@@ -62,6 +62,62 @@ class AggregatorAgent:
     async def search(
         self, query: str, limit: int, filters: SearchFilters | None = None
     ) -> AggregatedResult:
+        """Full tiered search: catalog first, then live for any uncovered source.
+        A convenience composition of the two phases — the agent calls the phases
+        directly to deliver catalog results now and append live results later."""
+        catalog, uncovered = await self.search_catalog(query, limit, filters)
+        if not uncovered:
+            return catalog
+        live = await self.search_live(query, limit, filters, source_names=uncovered)
+        sources = catalog.sources + live.sources
+        return AggregatedResult(listings=self._merge(sources), sources=sources)
+
+    async def search_catalog(
+        self, query: str, limit: int, filters: SearchFilters | None = None
+    ) -> tuple[AggregatedResult, list[str]]:
+        """Phase 1 — the fast catalog (Salesforce) tier. Returns the catalog result
+        plus the names of live spokes whose source the catalog did NOT cover."""
+        s = get_settings()
+        timeout = self._spoke_timeout
+        if timeout is None:
+            timeout = s.aggregator_spoke_timeout
+        min_catalog = self._min_catalog_results
+        if min_catalog is None:
+            min_catalog = s.aggregator_min_catalog_results
+
+        primary_results = await asyncio.gather(
+            *(self._run_spoke(sp, query, limit, timeout, filters) for sp in self._primary)
+        )
+
+        # Count catalog listings per source (case-insensitive).
+        catalog_by_source: dict[str, int] = {}
+        for r in primary_results:
+            for p in r.listings:
+                key = (p.source or "").lower().strip()
+                catalog_by_source[key] = catalog_by_source.get(key, 0) + 1
+
+        uncovered = [
+            sp.name
+            for sp in self._live
+            if catalog_by_source.get((sp.covers_source or "").lower().strip(), 0) < min_catalog
+        ]
+        logger.info(
+            "Catalog coverage by source: %s — uncovered live sources: %s",
+            catalog_by_source,
+            uncovered,
+        )
+        merged = self._merge(list(primary_results))
+        return AggregatedResult(listings=merged, sources=list(primary_results)), uncovered
+
+    async def search_live(
+        self,
+        query: str,
+        limit: int,
+        filters: SearchFilters | None = None,
+        source_names: list[str] | None = None,
+    ) -> AggregatedResult:
+        """Phase 2 — the slow live store tier. Runs the named live spokes (or all),
+        enriches them with purchase history, and merges."""
         s = get_settings()
         timeout = self._spoke_timeout
         if timeout is None:
@@ -69,63 +125,30 @@ class AggregatorAgent:
         enrich = self._enrich_history
         if enrich is None:
             enrich = s.aggregator_enrich_history
-        min_catalog = self._min_catalog_results
-        if min_catalog is None:
-            min_catalog = s.aggregator_min_catalog_results
 
-        # Tier 1 — catalog (Salesforce) first.
-        primary_results = await asyncio.gather(
-            *(self._run_spoke(sp, query, limit, timeout, filters) for sp in self._primary)
+        spokes = self._live
+        if source_names is not None:
+            wanted = {n.lower() for n in source_names}
+            spokes = [sp for sp in self._live if sp.name.lower() in wanted]
+        if not spokes:
+            return AggregatedResult(listings=[], sources=[])
+
+        # Load the purchase-history map concurrently so enrichment adds no wait.
+        history_task = (
+            asyncio.create_task(self._load_history(s.aggregator_history_days))
+            if enrich
+            else None
         )
-        results = list(primary_results)
-
-        # Count how many catalog listings we got per source (case-insensitive).
-        catalog_by_source: dict[str, int] = {}
-        for r in primary_results:
-            for p in r.listings:
-                key = (p.source or "").lower().strip()
-                catalog_by_source[key] = catalog_by_source.get(key, 0) + 1
-
-        # Tier 2 — run a live spoke ONLY when the catalog didn't already cover its
-        # source (fewer than `min_catalog` catalog hits for that source).
-        live_to_run = [
-            sp
-            for sp in self._live
-            if catalog_by_source.get((sp.covers_source or "").lower().strip(), 0) < min_catalog
-        ]
-
-        if live_to_run:
-            # Load the purchase-history map concurrently so enrichment adds no wait.
-            history_task = (
-                asyncio.create_task(self._load_history(s.aggregator_history_days))
-                if enrich
-                else None
-            )
-            live_results = await asyncio.gather(
-                *(self._run_spoke(sp, query, limit, timeout, filters) for sp in live_to_run)
-            )
-            history = await history_task if history_task is not None else {}
-            for spoke, result in zip(live_to_run, live_results):
-                result.listings = spoke.enrich(result.listings, history)
-            results.extend(live_results)
-            logger.info(
-                "Live sources queried: %s (catalog coverage by source: %s)",
-                [sp.name for sp in live_to_run],
-                catalog_by_source,
-            )
-        else:
-            logger.info(
-                "Catalog covers all live sources (%s) — skipping live calls",
-                catalog_by_source,
-            )
-
-        merged = self._merge(results)
-        logger.info(
-            "Aggregator: %d merged listing(s) from %s",
-            len(merged),
-            {r.source: r.status for r in results},
+        live_results = await asyncio.gather(
+            *(self._run_spoke(sp, query, limit, timeout, filters) for sp in spokes)
         )
-        return AggregatedResult(listings=merged, sources=list(results))
+        history = await history_task if history_task is not None else {}
+        for spoke, result in zip(spokes, live_results):
+            result.listings = spoke.enrich(result.listings, history)
+
+        logger.info("Live sources queried: %s", [sp.name for sp in spokes])
+        merged = self._merge(list(live_results))
+        return AggregatedResult(listings=merged, sources=list(live_results))
 
     @staticmethod
     async def _load_history(days: int) -> dict:
@@ -179,7 +202,10 @@ class AggregatorAgent:
         seen: dict[tuple[str, str], int] = {}
         for result in results:
             for p in result.listings:
-                key = (p.source.lower().strip(), p.title.lower().strip())
+                # Fall back to id when a title is missing so distinct rows can't
+                # silently collapse into one (e.g. an upstream field rename).
+                title_key = p.title.lower().strip() or p.id.lower()
+                key = (p.source.lower().strip(), title_key)
                 if key in seen:
                     existing = merged[seen[key]]
                     if existing.times_purchased is None and p.times_purchased is not None:

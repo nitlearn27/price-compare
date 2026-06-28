@@ -81,6 +81,31 @@ describe("useProductSearch", () => {
     expect(result.current.searchedVia).toBe("salesforce");
   });
 
+  it("appendResults adds new rows, dedupes by id, and clears loadingLive", () => {
+    const base = {
+      title: "P", source: "Amazon", current_price: 1, original_price: null,
+      last_purchased_price: null, discount: null, rating: null, review_count: null,
+      rank: null, product_url: null, image_url: null, availability: null,
+      last_ordered_date: null, times_purchased: null, buy_suggestion: null,
+      suggestion_reason: null,
+    };
+    const { result } = renderHook(() => useProductSearch());
+
+    act(() => {
+      result.current.setResults([{ id: "1", ...base }], "salesforce");
+      result.current.setLoadingLive(true);
+    });
+    expect(result.current.loadingLive).toBe(true);
+
+    act(() => {
+      // "1" is a dup (skipped), "2" is appended.
+      result.current.appendResults([{ id: "1", ...base }, { id: "2", ...base, source: "Flipkart" }]);
+    });
+
+    expect(result.current.results.map((r) => r.id)).toEqual(["1", "2"]);
+    expect(result.current.loadingLive).toBe(false);
+  });
+
   it("searchFlipkart sets results and tags searchedVia flipkart", async () => {
     const mockResults = [
       {

@@ -46,6 +46,8 @@ export const api = {
     post("/products/search", query),
   searchProductsFlipkart: (query: ProductQuery): Promise<ProductSearchResponse> =>
     post("/products/search/flipkart", query),
+  productsLive: (query: ProductQuery): Promise<ProductSearchResponse> =>
+    post("/products/live", query),
   getRecommendations: (
     req: RecommendationRequest,
   ): Promise<RecommendationResponse> => post("/recommendations/next-purchase", req),

@@ -47,24 +47,27 @@ def make_agent():
     return agent
 
 
-def stub_aggregator(monkeypatch, listings=None):
-    """Replace the hub-spoke aggregator with a deterministic stub so the loop
-    tests never trigger real source HTTP calls. Returns the listings used."""
+def stub_aggregator(monkeypatch, listings=None, uncovered=None):
+    """Replace the catalog phase with a deterministic stub so the loop tests never
+    trigger real source HTTP calls. `uncovered` are live sources still owed (→
+    pending_live). Returns the listings used."""
     import app.services.agent as agent_mod
     from app.agents.aggregator import AggregatedResult
     from app.agents.base import SourceResult
 
     listings = listings or []
+    uncovered = uncovered or []
 
-    async def fake_search(query, limit, filters=None):
-        return AggregatedResult(
+    async def fake_search_catalog(query, limit, filters=None):
+        agg = AggregatedResult(
             listings=listings,
             sources=[
                 SourceResult("Salesforce catalog", listings, "ok" if listings else "empty")
             ],
         )
+        return agg, uncovered
 
-    monkeypatch.setattr(agent_mod.aggregator_agent, "search", fake_search)
+    monkeypatch.setattr(agent_mod.aggregator_agent, "search_catalog", fake_search_catalog)
     return listings
 
 
@@ -91,6 +94,27 @@ async def test_loop_searches_then_returns_final_reply(monkeypatch, happy_path_re
     assert resp.reply == "Best value is the Flipkart one."
     assert len(resp.results) > 0  # aggregated results absorbed into the UI table
     assert respx.calls.call_count == 2  # tool round-trip + final answer
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_thin_catalog_returns_pending_live(monkeypatch):
+    """When the catalog doesn't cover a live source, the agent reports pending_live
+    so the frontend can fetch + append it (progressive loading)."""
+    stub_aggregator(monkeypatch, listings=[], uncovered=["flipkart"])
+    respx.post(DEEPSEEK_URL).mock(
+        side_effect=[
+            httpx.Response(200, json=search_call("carrot")),
+            httpx.Response(200, json=text_response("Fetching live Flipkart results too…")),
+        ]
+    )
+
+    agent = make_agent()
+    resp = await agent.run([ChatMessage(role="user", content="carrot")])
+
+    assert resp.pending_live is not None
+    assert resp.pending_live.query == "carrot"
+    assert resp.pending_live.sources == ["flipkart"]
 
 
 @respx.mock
@@ -165,7 +189,7 @@ async def test_token_budget_breaks_loop(monkeypatch):
 async def test_add_to_cart_dedupes():
     agent = make_agent()
     cart: dict = {}
-    out, _ = await agent._dispatch(
+    out, _, _ = await agent._dispatch(
         "add_to_cart",
         {
             "items": [
@@ -197,7 +221,7 @@ async def test_checkout_gate_blocks_unconfirmed(monkeypatch):
 
     agent = make_agent()
     cart = {"k": AgentCartItem(id="k", name="Atta 5kg", source="Flipkart")}
-    out, ckout = await agent._dispatch("checkout", {"confirmed": False}, [], set(), cart)
+    out, ckout, _ = await agent._dispatch("checkout", {"confirmed": False}, [], set(), cart)
 
     assert out["status"] == "confirmation_required"
     assert ckout is None
@@ -217,7 +241,7 @@ async def test_checkout_confirmed_submits_and_clears_cart(monkeypatch):
 
     agent = make_agent()
     cart = {"k": AgentCartItem(id="k", name="Atta 5kg", source="Flipkart")}
-    out, ckout = await agent._dispatch("checkout", {"confirmed": True}, [], set(), cart)
+    out, ckout, _ = await agent._dispatch("checkout", {"confirmed": True}, [], set(), cart)
 
     assert out["status"] == "ordered"
     assert ckout.submitted == 1

@@ -78,6 +78,24 @@ async def test_accepts_wrapped_object_and_aliases():
 
 
 @pytest.mark.asyncio
+async def test_accepts_product_name_field():
+    # The live hyperlocal service names the title field `product_name`.
+    payload = [
+        {
+            "product_name": "Local Carrot",
+            "current_price": 25,
+            "product_url": "https://flipkart.com/p/local-carrot",
+            "image_url": "https://img/carrot.jpg",
+        }
+    ]
+    with respx.mock:
+        respx.get(_URL).mock(return_value=httpx.Response(200, json=payload))
+        results = await search_flipkart("carrot", 3)
+
+    assert results[0].title == "Local Carrot"
+
+
+@pytest.mark.asyncio
 async def test_respects_limit():
     payload = [{"title": f"Item {i}", "price": i} for i in range(10)]
     with respx.mock:

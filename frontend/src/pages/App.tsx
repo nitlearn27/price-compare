@@ -162,6 +162,9 @@ export default function App() {
                   {resultCount !== 1 ? "s" : ""} across{" "}
                   <span className="text-white font-medium">{storeCount}</span> store
                   {storeCount !== 1 ? "s" : ""}
+                  {productSearch.loadingLive && (
+                    <span className="text-amber-300/90"> · fetching live prices…</span>
+                  )}
                 </p>
               ) : (
                 <p className="text-xs text-white/40 mt-1">

@@ -94,11 +94,21 @@ class AgentCartItem(BaseModel):
     source: str | None = None
 
 
+class PendingLive(BaseModel):
+    """Tells the frontend a slow live-store fetch is still owed for these sources,
+    so it can fetch them via /products/live and append to the table."""
+    query: str
+    sources: list[str]  # live spoke names, e.g. ["flipkart"]
+    min_price: float | None = None
+    max_price: float | None = None
+
+
 class AgentResponse(BaseModel):
     reply: str
     results: list[ProductListing] = []
     cart: list[AgentCartItem] = []
     checkout: CartCheckoutResponse | None = None
+    pending_live: PendingLive | None = None
 
 
 class RefreshRequest(BaseModel):
