@@ -127,6 +127,35 @@ async def test_tiered_skips_live_when_catalog_covers_source():
 
 
 @pytest.mark.asyncio
+async def test_tiered_covers_source_variants_by_prefix():
+    """Catalog sources like "Amazon Now" / "Amazon Fresh" count as coverage for
+    the live spoke that covers "Amazon" — no pointless live scrape."""
+    catalog = _StubSpoke(
+        "sf",
+        SourceResult(
+            "Salesforce catalog",
+            [
+                listing("1", "Toned Milk", "Amazon Now"),
+                listing("2", "Cow Milk", "Amazon Fresh"),
+            ],
+        ),
+    )
+    am = _StubSpoke(
+        "am", SourceResult("Amazon (live)", [listing("3", "Milk", "Amazon")]),
+        covers_source="Amazon",
+    )
+
+    agg = AggregatorAgent(
+        primary_spokes=[catalog], live_spokes=[am],
+        min_catalog_results=1, enrich_history=False,
+    )
+    res = await agg.search("milk", 3)
+
+    assert am.called is False  # "Amazon Now"/"Amazon Fresh" cover the Amazon spoke
+    assert len(res.listings) == 2
+
+
+@pytest.mark.asyncio
 async def test_tiered_runs_only_uncovered_live_sources():
     """Catalog has Flipkart but NOT Amazon → skip live Flipkart, run live Amazon."""
     catalog = _StubSpoke(

@@ -46,12 +46,16 @@ services:
         sync: false
       - key: GEMINI_MODEL
         value: "gemini-2.5-flash"
-      # Live Flipkart spoke (hub-spoke search). Without this the live spoke is a no-op.
+      # Live store spokes (hub-spoke search). Without these the live spokes are no-ops.
       - key: SEARCH_PRODUCT_FLIPKART_URL
-        value: "https://purchase-history-production.up.railway.app/api/search"
+        value: "https://flipkart-scraper-production-d2de.up.railway.app/api/search"
+      - key: SEARCH_PRODUCT_AMAZON_URL
+        value: "https://amazon-scraper-production.up.railway.app/api/search"
       # Cart checkout + OTP submission endpoints.
-      - key: CART_FLIPKART_URL
-        value: "https://purchase-history-production.up.railway.app/api/cart"
+      - key: FLIPKART_ADD_CART_URL
+        value: "https://flipkart-scraper-production-d2de.up.railway.app/api/cart"
+      - key: AMAZON_ADD_CART_URL
+        value: "https://amazon-scraper-production.up.railway.app/api/cart"
       - key: OTP_API_URL
         value: "https://amazon-fresh-history-production.up.railway.app/api/otp"
       - key: CORS_ALLOW_ORIGINS
@@ -61,11 +65,11 @@ services:
       # Recommendation engine ("next purchase" insights). Defaults to the
       # production Railway endpoint; override here to point at another deployment.
       - key: RECOMMENDATION_API_URL
-        value: "https://insight-generation-production.up.railway.app/api/insights/next-purchase"
-      # Product refresh triggers (optional — set in the dashboard if used).
+        value: "https://insight-generation-production-3544.up.railway.app/api/insights/next-purchase"
+      # Product refresh triggers (re-scrape orders into Salesforce).
       - key: REFRESH_AMAZON_URL
-        sync: false
+        value: "https://amazon-scraper-production.up.railway.app/api/products"
       - key: REFRESH_FLIPKART_URL
-        sync: false
+        value: "https://flipkart-scraper-production-d2de.up.railway.app/api/products"
       - key: REFRESH_ORDERS
         value: "2"

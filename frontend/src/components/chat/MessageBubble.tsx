@@ -1,4 +1,5 @@
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { clsx } from "clsx";
 import type { UIMessage } from "../../lib/types";
 import { STRINGS } from "../../lib/strings";
@@ -51,8 +52,8 @@ export function MessageBubble({ message }: Props) {
             {isUser ? (
               <p className="whitespace-pre-wrap">{message.content}</p>
             ) : (
-              <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-invert">
-                <ReactMarkdown>{message.content}</ReactMarkdown>
+              <div className="chat-md max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
               </div>
             )}
           </div>

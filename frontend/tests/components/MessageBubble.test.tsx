@@ -27,6 +27,14 @@ describe("MessageBubble", () => {
     render(<MessageBubble message={msg("assistant", "test")} />);
     expect(screen.getByLabelText(/pricebot message/i)).toBeInTheDocument();
   });
+
+  it("renders assistant markdown tables as real tables (GFM)", () => {
+    const table = "| Product | Price |\n|---|---|\n| Milk | ₹24 |";
+    render(<MessageBubble message={msg("assistant", table)} />);
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Product" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "₹24" })).toBeInTheDocument();
+  });
 });
 
 describe("TypingIndicator", () => {

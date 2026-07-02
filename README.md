@@ -326,8 +326,8 @@ Already grouped by source and capped at 3 per source.
 
 | Suite              | Command                               | Status                       |
 | ------------------ | ------------------------------------- | ---------------------------- |
-| Backend unit + integration | `cd backend && pytest`        | **54 tests, 89% coverage**   |
-| Frontend unit + component  | `cd frontend && pnpm test`    | **44 tests across 6 files**  |
+| Backend unit + integration | `cd backend && pytest`        | **169 tests, 82% coverage**   |
+| Frontend unit + component  | `cd frontend && pnpm test`    | **133 tests passed**          |
 | Frontend type check        | `cd frontend && pnpm typecheck` | clean                      |
 | Backend lint               | `cd backend && ruff check .`  | clean                        |
 | E2E (requires both servers) | `cd frontend && pnpm test:e2e` | Playwright                  |
@@ -353,6 +353,19 @@ All config via environment variables. See `.env.example` for the canonical list.
 | `CORS_ALLOW_ORIGINS`    | Comma-separated origins for CORS                     | `http://localhost:5173`                                  |
 | `LOG_LEVEL`             | Python log level                                     | `INFO`                                                   |
 | `RECOMMENDATION_API_URL`| "Next purchase" recommendation engine endpoint       | `https://insight-generation-production.up.railway.app/api/insights/next-purchase` |
+
+---
+
+## Cart Checkout & Recommendations
+
+### 1. Split Cart Checkout Routing
+When checking out, products are routed to their respective vendor APIs (`FLIPKART_ADD_CART_URL` and `AMAZON_ADD_CART_URL`) concurrently.
+- **Cross-Vendor Matching**: When an item with a selected vendor (e.g., Amazon) is submitted, the system ALSO extracts the core keyword (e.g. `"brinjal"`) using DeepSeek, queries your Salesforce history for the best matching Flipkart product title, and dispatches it to Flipkart. This ensures matching items are added to both carts automatically.
+
+### 2. Next Purchase Recommendations
+- Prompts the user with recommended items to buy based on previous purchase frequency and recency.
+- Recommendation items are enriched with high-quality product images by querying `image_url__c` from Salesforce.
+- Ratings returned in JSON format from the Amazon search microservice are automatically parsed and normalized for display.
 
 ---
 

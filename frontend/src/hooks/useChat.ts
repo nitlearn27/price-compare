@@ -108,14 +108,12 @@ export function useChat(cart?: { add: (item: CartItem) => void }) {
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Something went wrong. Please try again.";
         addMessage("assistant", `Sorry, I ran into an issue: ${msg}`);
-        if (file) {
-          productSearch.setError(msg);
-        }
+        productSearch.setError(msg);
       } finally {
         setIsLoading(false);
       }
     },
-    [messages, isLoading, addMessage, productSearch]
+    [messages, isLoading, addMessage, productSearch, cart]
   );
 
   const submitExample = useCallback(

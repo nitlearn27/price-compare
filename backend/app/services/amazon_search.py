@@ -61,7 +61,11 @@ def _parse_rating(value) -> str | None:
             )
             parsed = json.loads(cleaned)
             if isinstance(parsed, dict):
-                val = parsed.get("value") or parsed.get("shortDisplayString") or parsed.get("displayString")
+                val = (
+                    parsed.get("value")
+                    or parsed.get("shortDisplayString")
+                    or parsed.get("displayString")
+                )
                 if val is not None:
                     return str(val)
         except Exception:
@@ -69,7 +73,11 @@ def _parse_rating(value) -> str | None:
             try:
                 parsed = ast.literal_eval(val_str)
                 if isinstance(parsed, dict):
-                    val = parsed.get("value") or parsed.get("shortDisplayString") or parsed.get("displayString")
+                    val = (
+                        parsed.get("value")
+                        or parsed.get("shortDisplayString")
+                        or parsed.get("displayString")
+                    )
                     if val is not None:
                         return str(val)
             except Exception:

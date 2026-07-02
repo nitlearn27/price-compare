@@ -13,6 +13,7 @@ export const STRINGS = {
   ],
 
   typingIndicatorLabel: "Searching...",
+  viewResultsChip: "View full comparison",
   assistantName: "PriceBot",
 
   picksHeading: "Picks for you",
@@ -24,6 +25,8 @@ export const STRINGS = {
     "I couldn't find that in our catalog, so I'm searching Flipkart for live results…",
   liveFlipkartBadge: "Live from Flipkart",
 
+  tableIdleHeading: "Ready when you are",
+  tableIdleSubtext: "Ask the assistant about a product and comparisons will show up here.",
   tableEmptyHeading: "No products found",
   tableEmptySubtext: "Try a different search term or broaden your query.",
   tableLoadingLabel: "Loading results...",

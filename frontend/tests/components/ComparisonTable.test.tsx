@@ -46,9 +46,17 @@ function makeListing(overrides: Partial<ProductListing> = {}): ProductListing {
 }
 
 describe("ComparisonTable", () => {
-  it("shows empty state when no results", () => {
-    render(<ComparisonTable results={[]} loading={false} error={null} />);
+  it("shows empty state when a search returned no results", () => {
+    render(<ComparisonTable results={[]} loading={false} error={null} hasSearched />);
     expect(screen.getByText(/no products found/i)).toBeInTheDocument();
+  });
+
+  it("shows the idle state (not 'No products found') before any search", () => {
+    render(
+      <ComparisonTable results={[]} loading={false} error={null} hasSearched={false} />,
+    );
+    expect(screen.getByText(/ready when you are/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no products found/i)).toBeNull();
   });
 
   it("shows loading skeletons when loading", () => {

@@ -30,7 +30,7 @@ export function CartDrawer({ open, onClose }: Props) {
   // confirmation, then close the drawer so the user lands back on the results.
   useEffect(() => {
     if (!open || !success) return;
-    const t = setTimeout(onClose, 1100);
+    const t = setTimeout(onClose, 2500);
     return () => clearTimeout(t);
   }, [open, success, onClose]);
 

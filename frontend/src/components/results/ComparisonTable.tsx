@@ -13,6 +13,9 @@ interface Props {
   results: ProductListing[];
   loading: boolean;
   error: string | null;
+  /** False until the first search runs — shows a friendly idle state instead
+   *  of "No products found" when the app has just opened. */
+  hasSearched?: boolean;
 }
 
 const COLUMN_COUNT = 12;
@@ -86,6 +89,18 @@ function EmptyState() {
   );
 }
 
+function IdleState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 text-center fade-up">
+      <div className="w-20 h-20 rounded-3xl bg-white/[0.06] border border-white/10 flex items-center justify-center mb-4 shadow-sm">
+        <span className="text-4xl" role="img" aria-label="sparkles">✨</span>
+      </div>
+      <p className="text-white font-medium text-base">{STRINGS.tableIdleHeading}</p>
+      <p className="text-white/60 text-sm mt-1.5">{STRINGS.tableIdleSubtext}</p>
+    </div>
+  );
+}
+
 function ErrorState({ detail }: { detail: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center fade-up">
@@ -98,7 +113,7 @@ function ErrorState({ detail }: { detail: string }) {
   );
 }
 
-export function ComparisonTable({ results, loading, error }: Props) {
+export function ComparisonTable({ results, loading, error, hasSearched = true }: Props) {
   const isMobile = useMediaQuery("(max-width: 767px)");
   const groups = groupBySource(results);
 
@@ -117,7 +132,7 @@ export function ComparisonTable({ results, loading, error }: Props) {
   } else if (error) {
     body = <ErrorState detail={error} />;
   } else if (results.length === 0) {
-    body = <EmptyState />;
+    body = hasSearched ? <EmptyState /> : <IdleState />;
   } else if (isMobile) {
     body = (
       <div className="p-3 space-y-5">

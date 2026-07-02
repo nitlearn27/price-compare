@@ -31,7 +31,9 @@ async def call_deepseek(prompt: str) -> str:
         "messages": [
             {
                 "role": "system",
-                "content": "You are a helpful product matching assistant. You return only the matched product title, or 'NONE' if no product is a good match. No explanation, no markdown formatting."
+                "content": "You are a helpful product matching assistant. You return "
+                "only the matched product title, or 'NONE' if no product is a good match. "
+                "No explanation, no markdown formatting.",
             },
             {"role": "user", "content": prompt}
         ],
@@ -40,7 +42,9 @@ async def call_deepseek(prompt: str) -> str:
 
     async with httpx.AsyncClient() as client:
         try:
-            resp = await client.post(s.deepseek_base_url, json=payload, headers=headers, timeout=15.0)
+            resp = await client.post(
+                s.deepseek_base_url, json=payload, headers=headers, timeout=15.0
+            )
             if resp.status_code == 200:
                 data = resp.json()
                 return data["choices"][0]["message"]["content"].strip()
@@ -53,7 +57,8 @@ async def call_deepseek(prompt: str) -> str:
 
 async def extract_core_keyword(product_name: str) -> str:
     prompt = (
-        f"You are a shopping assistant. Extract the single core product keyword/noun from this detailed product name.\n"
+        f"You are a shopping assistant. Extract the single core product keyword/noun "
+        f"from this detailed product name.\n"
         f"For example:\n"
         f"- 'Fresh Brinjal Bharta (Bottle Shape)' -> 'brinjal'\n"
         f"- 'Nandini Homogenised Cow Milk' -> 'milk'\n"
@@ -74,7 +79,10 @@ async def extract_core_keyword(product_name: str) -> str:
         # Simple local fallback if deepseek returned empty or is unconfigured
         words = [w.lower() for w in product_name.split() if w.isalpha()]
         for word in words:
-            if word in ["brinjal", "milk", "onion", "atta", "salt", "oil", "sugar", "bread", "butter"]:
+            staples = [
+                "brinjal", "milk", "onion", "atta", "salt", "oil", "sugar", "bread", "butter",
+            ]
+            if word in staples:
                 return word
         return words[0] if words else product_name
     return val
@@ -143,12 +151,16 @@ async def _resolve_name(original_name: str, target_source: str) -> str:
 
     # Use DeepSeek to match
     prompt = (
-        f"We want to find a product similar to '{original_name}' from the user's previously ordered items. "
+        f"We want to find a product similar to '{original_name}' from the user's "
+        f"previously ordered items. "
         f"Original requested name: '{original_name}'\n"
         f"Previously purchased products: {unique_titles}\n\n"
-        f"Select the best matching product from the previously purchased list that represents the original requested name. "
-        f"For example, if the requested name is 'onion', and previously purchased items has 'Fresh Onion', select 'Fresh Onion'. "
-        f"If none of the previously purchased products is a good match for the requested product, return 'NONE'. "
+        f"Select the best matching product from the previously purchased list that "
+        f"represents the original requested name. "
+        f"For example, if the requested name is 'onion', and previously purchased items "
+        f"has 'Fresh Onion', select 'Fresh Onion'. "
+        f"If none of the previously purchased products is a good match for the requested "
+        f"product, return 'NONE'. "
         f"Respond only with the exact product title from the list, or 'NONE'."
     )
 
@@ -221,10 +233,15 @@ async def _post_to_store(
         store_label,
         resp.status_code,
     )
-    return CartCheckoutResponse(
-        submitted=len(products),
-        detail=f"Submitted {len(products)} item(s) to {store_label}.",
+    # 202 means the store runs the add-to-cart asynchronously — the items land
+    # in the store cart a little later, so say so instead of implying "done".
+    detail = (
+        f"Sent {len(products)} item(s) to {store_label} — "
+        "they'll appear in your store cart shortly."
+        if resp.status_code == 202
+        else f"Submitted {len(products)} item(s) to {store_label}."
     )
+    return CartCheckoutResponse(submitted=len(products), detail=detail)
 
 
 async def submit_cart(
@@ -307,20 +324,41 @@ async def submit_cart(
 
     async with httpx.AsyncClient() as client:
         tasks = []
+        labels = []
         if flipkart_items:
             tasks.append(
                 _post_to_store(client, s.flipkart_add_cart_url, flipkart_items, "Flipkart")
             )
+            labels.append("Flipkart")
         if amazon_items:
             tasks.append(
                 _post_to_store(client, s.amazon_add_cart_url, amazon_items, "Amazon")
             )
+            labels.append("Amazon")
 
-        results = await asyncio.gather(*tasks)
+        # One store failing (down, unconfigured, 5xx) must not sink the other's
+        # already-accepted submission — report partial success instead.
+        outcomes = await asyncio.gather(*tasks, return_exceptions=True)
 
-    # Combine results
+    results: list[CartCheckoutResponse] = []
+    failed: list[str] = []
+    first_error: BaseException | None = None
+    for label, outcome in zip(labels, outcomes):
+        if isinstance(outcome, BaseException):
+            logger.error("Cart submit to %s failed: %s", label, outcome)
+            failed.append(label)
+            if first_error is None:
+                first_error = outcome
+        else:
+            results.append(outcome)
+
+    if not results and first_error is not None:
+        raise first_error
+
     total_submitted = sum(r.submitted for r in results)
     details = [r.detail for r in results]
+    if failed:
+        details.append(f"Couldn't submit to {', '.join(failed)} — please try again.")
     return CartCheckoutResponse(
         submitted=total_submitted,
         detail=" ".join(details),

@@ -14,7 +14,7 @@ test.describe("Product comparison flow", () => {
   });
 
   test("chat input is visible and accepts text", async ({ page }) => {
-    const input = page.getByRole("textbox");
+    const input = page.getByRole("textbox", { name: /ask me to find a product/i });
     await input.fill("Find Aashirvaad Atta 5kg");
     await expect(input).toHaveValue("Find Aashirvaad Atta 5kg");
   });
@@ -31,6 +31,8 @@ test.describe("Product comparison flow", () => {
   test("mobile layout: single column", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     // Chat pane should still be visible
-    await expect(page.getByRole("textbox")).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: /ask me to find a product/i }),
+    ).toBeVisible();
   });
 });

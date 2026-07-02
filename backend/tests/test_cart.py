@@ -35,7 +35,8 @@ def _mock_deepseek_calls(monkeypatch):
     async def mock_extract(product_name):
         words = [w.lower() for w in product_name.split() if w.isalpha()]
         for word in words:
-            if word in ["brinjal", "milk", "onion", "atta", "salt", "oil", "sugar", "bread", "butter"]:
+            staples = ["brinjal", "milk", "onion", "atta", "salt", "oil", "sugar", "bread"]
+            if word in staples + ["butter"]:
                 return word
         return words[0] if words else product_name
 
@@ -369,3 +370,54 @@ async def test_submit_cart_resolves_cross_vendor(monkeypatch, respx_mock):
     assert result.submitted == 2
 
 
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_submit_cart_partial_store_failure_reports_success_and_failure():
+    """One store erroring must not sink the other's accepted submission."""
+    from app.core.config import get_settings
+    settings = get_settings()
+    settings.amazon_add_cart_url = "https://amazon.test/api/cart"
+
+    fk_route = respx.post(CART_URL).mock(
+        return_value=httpx.Response(202, json={"status": "started"})
+    )
+    amz_route = respx.post("https://amazon.test/api/cart").mock(
+        return_value=httpx.Response(500, json={"error": "boom"})
+    )
+
+    result = await submit_cart(PRODUCTS)
+
+    assert fk_route.called
+    assert amz_route.called
+    assert result.submitted == 2  # only the Flipkart half landed
+    assert "Flipkart" in result.detail
+    assert "Couldn't submit to Amazon" in result.detail
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_submit_cart_all_stores_failing_raises():
+    from app.core.config import get_settings
+    settings = get_settings()
+    settings.amazon_add_cart_url = "https://amazon.test/api/cart"
+
+    respx.post(CART_URL).mock(return_value=httpx.Response(500))
+    respx.post("https://amazon.test/api/cart").mock(return_value=httpx.Response(500))
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await submit_cart(PRODUCTS)
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_submit_cart_202_detail_mentions_delayed_cart():
+    route = respx.post(CART_URL).mock(
+        return_value=httpx.Response(202, json={"status": "started"})
+    )
+
+    result = await submit_cart(PRODUCTS)
+
+    assert route.called
+    assert "shortly" in result.detail

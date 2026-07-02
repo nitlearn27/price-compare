@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
+import { LayoutGrid } from "lucide-react";
 import type { UIMessage } from "../../lib/types";
 import type { RecommendationsState } from "../../hooks/useRecommendations";
 import { MessageBubble, TypingIndicator } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 import { RecommendedPicks } from "../recommendations/RecommendedPicks";
+import { STRINGS } from "../../lib/strings";
 
 interface Props {
   messages: UIMessage[];
@@ -12,6 +14,11 @@ interface Props {
   onSubmit: (file?: File | null) => void;
   isLoading: boolean;
   recommendations: RecommendationsState;
+  /** Number of rows currently in the comparison table. */
+  resultCount?: number;
+  /** Mobile-only: switch to the results tab. Renders a "View results" chip
+   *  after the assistant reply so the user opts in instead of being yanked away. */
+  onViewResults?: () => void;
 }
 
 export function ChatWindow({
@@ -21,6 +28,8 @@ export function ChatWindow({
   onSubmit,
   isLoading,
   recommendations,
+  resultCount = 0,
+  onViewResults,
 }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -59,6 +68,18 @@ export function ChatWindow({
               <MessageBubble key={msg.id} message={msg} />
             ))}
             {isLoading && <TypingIndicator />}
+            {!isLoading && resultCount > 0 && onViewResults && (
+              <div className="lg:hidden flex justify-start pl-9">
+                <button
+                  type="button"
+                  onClick={onViewResults}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-300 bg-sky-400/15 ring-1 ring-sky-400/30 hover:bg-sky-400/25 rounded-full px-3.5 py-1.5 transition-colors"
+                >
+                  <LayoutGrid size={13} aria-hidden="true" />
+                  {STRINGS.viewResultsChip} ({resultCount})
+                </button>
+              </div>
+            )}
           </>
         )}
         <div ref={bottomRef} aria-hidden="true" />

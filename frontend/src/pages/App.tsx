@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Sparkles, MessageSquare, LayoutGrid, ShoppingCart, Check, X } from "lucide-react";
 import { useChat } from "../hooks/useChat";
 import { useRecommendations } from "../hooks/useRecommendations";
@@ -34,19 +34,11 @@ export default function App() {
   const storeCount = new Set(productSearch.results.map((r) => r.source)).size;
 
   // Load the first-open recommendations once (the backend caches the engine call).
+  // Depend on the stable fetch callback, not the homeRecs object recreated each render.
+  const fetchHomeRecs = homeRecs.fetch;
   useEffect(() => {
-    homeRecs.fetch("");
-  }, [homeRecs.fetch]);
-
-  // On mobile, jump to the results tab as soon as a search starts so the user
-  // sees the loading state and results instead of staying on the chat pane.
-  const prevLoading = useRef(false);
-  useEffect(() => {
-    if (productSearch.loading && !prevLoading.current) {
-      setActiveTab("results");
-    }
-    prevLoading.current = productSearch.loading;
-  }, [productSearch.loading]);
+    fetchHomeRecs("");
+  }, [fetchHomeRecs]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden app-bg">
@@ -129,6 +121,8 @@ export default function App() {
             onSubmit={(file) => sendMessage(input, file)}
             isLoading={isLoading}
             recommendations={homeRecs}
+            resultCount={resultCount}
+            onViewResults={() => setActiveTab("results")}
           />
         </section>
 
@@ -179,6 +173,7 @@ export default function App() {
               results={productSearch.results}
               loading={productSearch.loading}
               error={productSearch.error}
+              hasSearched={productSearch.searchedVia !== null}
             />
           </div>
         </section>

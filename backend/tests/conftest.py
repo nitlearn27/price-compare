@@ -45,10 +45,10 @@ def override_settings(monkeypatch):
 
     # Patch settings in all service modules that cache it
     import app.routers.products as rp_mod
+    import app.services.cart as cart_mod
     import app.services.openrouter as or_mod
     import app.services.product_search as ps_mod  # noqa: F401
     import app.services.salesforce as sf_mod
-    import app.services.cart as cart_mod
 
     sf_mod.salesforce_client._settings = test_settings
     or_mod.openrouter_client._settings = test_settings

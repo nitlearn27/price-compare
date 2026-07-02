@@ -96,10 +96,20 @@ class AggregatorAgent:
                 key = (p.source or "").lower().strip()
                 catalog_by_source[key] = catalog_by_source.get(key, 0) + 1
 
+        # A live spoke is covered when catalog sources *start with* its
+        # covers_source — the catalog stores variants like "Amazon Now" /
+        # "Amazon Fresh" that the single live "Amazon" spoke stands in for.
+        def covered_count(covers: str) -> int:
+            if not covers:
+                return 0
+            return sum(
+                n for src, n in catalog_by_source.items() if src.startswith(covers)
+            )
+
         uncovered = [
             sp.name
             for sp in self._live
-            if catalog_by_source.get((sp.covers_source or "").lower().strip(), 0) < min_catalog
+            if covered_count((sp.covers_source or "").lower().strip()) < min_catalog
         ]
         logger.info(
             "Catalog coverage by source: %s — uncovered live sources: %s",

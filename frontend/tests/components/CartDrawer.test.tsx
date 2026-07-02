@@ -122,6 +122,6 @@ describe("CartDrawer", () => {
     // cart empties on success
     await waitFor(() => expect(screen.queryByText("Amul Gold Milk")).not.toBeInTheDocument());
     // and the drawer auto-closes shortly after
-    await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
+    await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 4000 });
   });
 });
