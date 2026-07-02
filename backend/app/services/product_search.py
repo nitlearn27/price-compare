@@ -95,6 +95,44 @@ def _score(record: dict) -> tuple[int, int]:
     return (times, rank_score)
 
 
+def _parse_rating(value) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, dict):
+        val = value.get("value") or value.get("shortDisplayString") or value.get("displayString")
+        return str(val) if val is not None else None
+
+    val_str = str(value).strip()
+    if val_str.startswith("{") and val_str.endswith("}"):
+        import json
+        try:
+            # Convert single quotes and python bools to JSON format
+            cleaned = (
+                val_str.replace("'", '"')
+                .replace("True", "true")
+                .replace("False", "false")
+                .replace("None", "null")
+            )
+            parsed = json.loads(cleaned)
+            if isinstance(parsed, dict):
+                val = parsed.get("value") or parsed.get("shortDisplayString") or parsed.get("displayString")
+                if val is not None:
+                    return str(val)
+        except Exception:
+            import ast
+            try:
+                parsed = ast.literal_eval(val_str)
+                if isinstance(parsed, dict):
+                    val = parsed.get("value") or parsed.get("shortDisplayString") or parsed.get("displayString")
+                    if val is not None:
+                        return str(val)
+            except Exception:
+                pass
+    return val_str
+
+
 def _normalize(record: dict, today: date | None = None) -> ProductListing:
     current_price = _safe_float(_ci_get(record, "Current_Price__c"))
     original_price = _safe_float(_ci_get(record, "Original_Price__c"))
@@ -129,7 +167,7 @@ def _normalize(record: dict, today: date | None = None) -> ProductListing:
         original_price=original_price,
         last_purchased_price=last_purchased_price,
         discount=discount,
-        rating=str(rating_value) if rating_value is not None else None,
+        rating=_parse_rating(rating_value),
         review_count=_safe_int(_ci_get(record, "Review_Count__c")),
         rank=_safe_int(_ci_get(record, "Rank__c")),
         product_url=_ci_get(record, "Product_URL__c"),

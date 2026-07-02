@@ -55,5 +55,16 @@ async def fetch_next_purchase(
             "Recommendation engine returned %d items", len(data.get("recommendations", []))
         )
         result = RecommendationResponse(**data)
+
+        # Enrich recommendations with image URLs from Salesforce
+        product_names = [item.product_name for item in result.recommendations if item.product_name]
+        if product_names:
+            from app.services.salesforce import salesforce_client
+            images = await salesforce_client.get_product_images(product_names)
+            for item in result.recommendations:
+                item_name_lower = item.product_name.strip().lower()
+                if item_name_lower in images:
+                    item.image_url = images[item_name_lower]
+
         _cache[key] = (time.monotonic(), result)
         return result

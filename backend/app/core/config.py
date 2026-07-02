@@ -64,8 +64,8 @@ class Settings(BaseSettings):
     recommendation_cache_ttl_seconds: int = 3600  # 1 hour
 
     # Cart checkout (bulk order submission) — external purchasing apps
-    cart_flipkart_url: str = "https://purchase-history-production.up.railway.app/api/cart"
-    cart_amazon_url: str = ""  # to be wired later
+    flipkart_add_cart_url: str = "https://purchase-history-production.up.railway.app/api/cart"
+    amazon_add_cart_url: str = ""
 
     # OTP submission — external service. Triggered by the "otp <number>" chat keyword.
     otp_api_url: str = "https://amazon-fresh-history-production.up.railway.app/api/otp"

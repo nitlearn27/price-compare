@@ -92,3 +92,33 @@ async def test_http_error_propagates():
         respx.get(_URL).mock(return_value=httpx.Response(500, text="boom"))
         with pytest.raises(httpx.HTTPStatusError):
             await search_amazon("milk", 3)
+
+
+@pytest.mark.asyncio
+async def test_amazon_search_parses_json_rating():
+    payload = [
+        {
+            "product_name": "Fresh Brinjal Varikatri",
+            "current_price": 32,
+            "product_url": "https://www.amazon.in/dp/B07BG4XMWQ",
+            "rating": {
+                "displayString": "4.2 out of 5 stars",
+                "fullStarCount": 4,
+                "hasHalfStar": False,
+                "shortDisplayString": "4.2",
+                "value": 4.2,
+            },
+            "image_url": "https://m.media-amazon.com/images/G/31/img24/Tez/F_V/Phase4/B07BG4XMWQ._SL1000_.jpg",
+            "availability": "Available",
+            "source": "Amazon Now",
+            "weight": "500 g",
+        }
+    ]
+    with respx.mock:
+        respx.get(_URL).mock(return_value=httpx.Response(200, json=payload))
+        results = await search_amazon("brinjal", 3)
+
+    assert len(results) == 1
+    item = results[0]
+    assert item.rating == "4.2"
+

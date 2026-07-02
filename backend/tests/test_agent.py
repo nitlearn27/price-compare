@@ -234,7 +234,7 @@ async def test_checkout_confirmed_submits_and_clears_cart(monkeypatch):
     from app.services import agent as agent_mod
 
     async def fake_submit(products):
-        assert products == ["Atta 5kg"]
+        assert products == [{"name": "Atta 5kg", "source": "Flipkart"}]
         return CartCheckoutResponse(submitted=1, detail="Submitted 1 item(s).")
 
     monkeypatch.setattr(agent_mod, "submit_cart", fake_submit)

@@ -61,7 +61,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setError(null);
     setSuccess(null);
     try {
-      const resp = await api.checkoutCart({ products: items.map((i) => i.name) });
+      const resp = await api.checkoutCart({
+        products: items.map((i) => ({ name: i.name, source: i.source })),
+      });
       setSuccess(resp.detail);
       setItems([]);
     } catch (err) {

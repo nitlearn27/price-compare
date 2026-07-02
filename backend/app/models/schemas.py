@@ -72,6 +72,7 @@ class RecommendationItem(BaseModel):
     reasoning: str | None = None
     rating: str | None = None
     highlights: list[str] = []
+    image_url: str | None = None
 
 
 class RecommendationResponse(BaseModel):
@@ -79,8 +80,13 @@ class RecommendationResponse(BaseModel):
     recommendations: list[RecommendationItem]
 
 
+class CartItemCheckout(BaseModel):
+    name: str
+    source: str | None = None
+
+
 class CartCheckoutRequest(BaseModel):
-    products: list[str] = Field(..., min_length=1)
+    products: list[str | CartItemCheckout] = Field(..., min_length=1)
 
 
 class CartCheckoutResponse(BaseModel):

@@ -376,7 +376,7 @@ class ShoppingAgent:
                 }, None, None
             if not cart:
                 return {"status": "empty", "message": "Cart is empty."}, None, None
-            result = await submit_cart([c.name for c in cart.values()])
+            result = await submit_cart([{"name": c.name, "source": c.source} for c in cart.values()])
             cart.clear()
             return {"status": "ordered", "detail": result.detail}, result, None
 

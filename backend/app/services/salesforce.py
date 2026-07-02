@@ -176,6 +176,36 @@ class SalesforceClient:
         data = await self._request("GET", url, params={"q": soql})
         return data.get("records", [])
 
+    async def get_product_images(self, product_names: list[str]) -> dict[str, str | None]:
+        """Fetch image_url__c for a list of product titles/names."""
+        if not product_names:
+            return {}
+
+        escaped_names = [f"'{escape_soql(name)}'" for name in product_names]
+        names_in = ", ".join(escaped_names)
+        where_clause = f"title__c IN ({names_in}) OR Name IN ({names_in})"
+
+        s = self._settings
+        instance_url = self._instance_url or s.sf_instance_url
+        url = f"{instance_url}/services/data/v{s.sf_api_version}/query"
+
+        soql = f"SELECT title__c, Name, image_url__c FROM Grocery_Product__c WHERE {where_clause}"
+        logger.info("Enriching recommendations: SOQL query: %s", soql)
+
+        try:
+            data = await self._request("GET", url, params={"q": soql})
+            records = data.get("records", [])
+            images = {}
+            for r in records:
+                img = r.get("image_url__c") or r.get("Image_URL__c")
+                title = r.get("title__c") or r.get("Title__c") or r.get("Name")
+                if title and img:
+                    images[title.strip().lower()] = img
+            return images
+        except Exception:
+            logger.exception("Failed to fetch product images from Salesforce")
+            return {}
+
 
 # Module-level singleton — reused across requests to share the token cache.
 salesforce_client = SalesforceClient()

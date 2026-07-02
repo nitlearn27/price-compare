@@ -100,7 +100,9 @@ describe("CartDrawer", () => {
     await waitFor(() =>
       expect(screen.getByText(/submitted 1 item/i)).toBeInTheDocument(),
     );
-    expect(api.checkoutCart).toHaveBeenCalledWith({ products: ["Amul Gold Milk"] });
+    expect(api.checkoutCart).toHaveBeenCalledWith({
+      products: [{ name: "Amul Gold Milk", source: "Flipkart" }],
+    });
   });
 
   it("clears the cart and closes the drawer after a successful submit", async () => {

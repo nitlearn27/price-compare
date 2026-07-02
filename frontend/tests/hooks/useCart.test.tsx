@@ -58,7 +58,10 @@ describe("useCart", () => {
     await act(async () => { await result.current.checkout(); });
 
     expect(spy).toHaveBeenCalledWith({
-      products: ["Amul Gold Milk", "Aashirvaad Atta 5kg"],
+      products: [
+        { name: "Amul Gold Milk", source: "Flipkart" },
+        { name: "Aashirvaad Atta 5kg", source: "Flipkart" },
+      ],
     });
     expect(result.current.count).toBe(0);
     expect(result.current.success).toContain("Submitted");

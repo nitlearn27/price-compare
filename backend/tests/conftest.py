@@ -32,6 +32,8 @@ def override_settings(monkeypatch):
         refresh_flipkart_url="https://refresh.test/flipkart",
         refresh_orders=2,
         otp_api_url="https://otp.test/api/otp",
+        flipkart_add_cart_url="https://purchase-history-production.up.railway.app/api/cart",
+        amazon_add_cart_url="https://amazon.test/api/cart",
         search_product_flipkart_url="https://flipkart.test/search",
         search_product_amazon_url="https://amazon.test/search",
         recommendation_api_url="https://insight-generation-production.up.railway.app/api/insights/next-purchase",
@@ -46,9 +48,11 @@ def override_settings(monkeypatch):
     import app.services.openrouter as or_mod
     import app.services.product_search as ps_mod  # noqa: F401
     import app.services.salesforce as sf_mod
+    import app.services.cart as cart_mod
 
     sf_mod.salesforce_client._settings = test_settings
     or_mod.openrouter_client._settings = test_settings
+    monkeypatch.setattr(cart_mod, "get_settings", lambda: test_settings)
     rp_mod  # imported to ensure patching chain works
 
     yield

@@ -292,3 +292,10 @@ def test_normalize_yields_new_for_default_record():
     assert listing.buy_suggestion == "new"
     assert listing.times_purchased is None
     assert listing.last_ordered_date is None
+
+
+def test_normalize_parses_complex_rating_dict_string():
+    rating_str = "{'displayString': '4.3 out of 5 stars', 'fullStarCount': 4, 'hasHalfStar': True, 'shortDisplayString': '4.3', 'value': 4.3}"
+    record = make_record(Rating__c=rating_str)
+    listing = _normalize(record)
+    assert listing.rating == "4.3"

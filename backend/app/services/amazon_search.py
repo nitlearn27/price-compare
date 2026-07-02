@@ -40,6 +40,43 @@ def _safe_int(value) -> int | None:
         return None
 
 
+def _parse_rating(value) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, dict):
+        val = value.get("value") or value.get("shortDisplayString") or value.get("displayString")
+        return str(val) if val is not None else None
+
+    val_str = str(value).strip()
+    if val_str.startswith("{") and val_str.endswith("}"):
+        import json
+        try:
+            cleaned = (
+                val_str.replace("'", '"')
+                .replace("True", "true")
+                .replace("False", "false")
+                .replace("None", "null")
+            )
+            parsed = json.loads(cleaned)
+            if isinstance(parsed, dict):
+                val = parsed.get("value") or parsed.get("shortDisplayString") or parsed.get("displayString")
+                if val is not None:
+                    return str(val)
+        except Exception:
+            import ast
+            try:
+                parsed = ast.literal_eval(val_str)
+                if isinstance(parsed, dict):
+                    val = parsed.get("value") or parsed.get("shortDisplayString") or parsed.get("displayString")
+                    if val is not None:
+                        return str(val)
+            except Exception:
+                pass
+    return val_str
+
+
 def _normalize_amazon(item: dict, index: int) -> ProductListing:
     current_price = _safe_float(_ci_get(item, "current_price", "price"))
     original_price = _safe_float(_ci_get(item, "original_price", "mrp"))
@@ -66,7 +103,7 @@ def _normalize_amazon(item: dict, index: int) -> ProductListing:
         original_price=original_price,
         last_purchased_price=None,
         discount=discount,
-        rating=str(rating_value) if rating_value is not None else None,
+        rating=_parse_rating(rating_value),
         review_count=_safe_int(_ci_get(item, "review_count", "reviews")),
         rank=_safe_int(_ci_get(item, "rank")),
         product_url=product_url,

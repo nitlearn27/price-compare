@@ -88,6 +88,7 @@ export interface RecommendationItem {
   reasoning: string | null;
   rating: string | null;
   highlights: string[];
+  image_url?: string | null;
 }
 
 export interface RecommendationResponse {
@@ -127,8 +128,13 @@ export interface CartItem {
   source: string | null;
 }
 
+export interface CartItemCheckout {
+  name: string;
+  source: string | null;
+}
+
 export interface CartCheckoutRequest {
-  products: string[];
+  products: (string | CartItemCheckout)[];
 }
 
 export interface CartCheckoutResponse {
