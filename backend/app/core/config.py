@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     # (Flipkart, Amazon) hit its website only when the catalog returned FEWER than
     # this many results FOR THAT SOURCE. Default 1 = skip a source's live call
     # whenever the catalog already has at least one product from it.
-    aggregator_min_catalog_results: int = 1
+    aggregator_min_catalog_results: int = 3
 
     # Product refresh triggers (fire-and-forget, no auth)
     refresh_amazon_url: str = ""

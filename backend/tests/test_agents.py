@@ -94,8 +94,9 @@ class _StubSpoke(SourceAgent):
         self.covers_source = covers_source
         self.called = False
 
-    async def search(self, query, limit, filters=None):
+    async def search(self, query, limit, filters=None, exclude_titles=None):
         self.called = True
+        self.last_exclude_titles = exclude_titles
         if self._sleep:
             await asyncio.sleep(self._sleep)
         if self._raise:
@@ -310,6 +311,31 @@ async def test_search_catalog_reports_uncovered_without_running_live():
 
 
 @pytest.mark.asyncio
+async def test_search_catalog_force_live_sources():
+    catalog = _StubSpoke(
+        "sf", SourceResult("Salesforce catalog", [
+            listing("1", "Atta", "Flipkart"),
+            listing("2", "Oil", "Amazon")
+        ])
+    )
+    fk = _StubSpoke("fk", SourceResult("Flipkart (live)", []), covers_source="Flipkart")
+    am = _StubSpoke("am", SourceResult("Amazon (live)", []), covers_source="Amazon")
+
+    agg = AggregatorAgent(
+        primary_spokes=[catalog], live_spokes=[fk, am],
+        min_catalog_results=1, enrich_history=False,
+    )
+
+    # Normally both sources are covered
+    _, uncovered = await agg.search_catalog("atta", 3)
+    assert uncovered == []
+
+    # Forcing fk makes it show up in uncovered
+    _, uncovered = await agg.search_catalog("atta", 3, force_live_sources=["fk"])
+    assert uncovered == ["fk"]
+
+
+@pytest.mark.asyncio
 async def test_search_live_runs_only_named_sources():
     fk = _StubSpoke("fk", SourceResult("Flipkart (live)", [listing("2", "Onion", "Flipkart")]))
     am = _StubSpoke("am", SourceResult("Amazon (live)", [listing("3", "Onion", "Amazon")]))
@@ -447,3 +473,39 @@ async def test_aggregator_enriches_live_results_end_to_end(monkeypatch):
     assert len(res.listings) == 1
     assert res.listings[0].times_purchased == 5
     assert res.listings[0].buy_suggestion == "frequent"  # was "new" before enrichment
+
+
+@pytest.mark.asyncio
+async def test_search_live_excludes_already_found_titles(monkeypatch):
+    import app.agents.aggregator as agg_mod
+
+    async def fake_search(query):
+        return [
+            {"Title__c": "Tata Sampan Chicken Masala", "Source__c": "Amazon Fresh"},
+            {"Title__c": "Tata Sampan Turmeric Powder", "Source__c": "Amazon Fresh"},
+        ]
+
+    monkeypatch.setattr(agg_mod.salesforce_client, "search_products", fake_search)
+
+    # Spoke returns three products, one of which matches the Salesforce catalog product
+    live_spoke = _StubSpoke(
+        "am",
+        SourceResult(
+            "Amazon (live)",
+            [
+                listing("1", "Tata Sampan Chicken Masala", "Amazon Fresh"),
+                listing("2", "Tata Sampan Coriander Powder", "Amazon Fresh"),
+                listing("3", "Tata Sampan Chilli Powder", "Amazon Fresh"),
+            ]
+        ),
+        covers_source="Amazon"
+    )
+
+    agg = AggregatorAgent(primary_spokes=[], live_spokes=[live_spoke], enrich_history=False)
+    await agg.search_live("chicken", 3)
+
+    assert live_spoke.called is True
+    assert live_spoke.last_exclude_titles == {
+        "tata sampan chicken masala",
+        "tata sampan turmeric powder",
+    }

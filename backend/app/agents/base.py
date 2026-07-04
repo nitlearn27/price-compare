@@ -67,7 +67,11 @@ class SourceAgent:
     covers_source: str | None = None
 
     async def search(
-        self, query: str, limit: int, filters: "SearchFilters | None" = None
+        self,
+        query: str,
+        limit: int,
+        filters: "SearchFilters | None" = None,
+        exclude_titles: set[str] | None = None,
     ) -> SourceResult:  # pragma: no cover
         raise NotImplementedError
 

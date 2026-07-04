@@ -48,16 +48,28 @@ _SYSTEM_PROMPT = (
     "You work in a loop: call a tool, look at the REAL data it returns, reason, then "
     "act again. Only use values returned by tools — never invent prices, ratings, or "
     "availability.\n\n"
+    "RESPONSE FORMAT RULE (CRITICAL):\n"
+    "When returning search results, always present the response in two sleek sections:\n"
+    "1. A clean markdown comparison table of the top matches (columns: Store | Product | "
+    "Price | Rating).\n"
+    "2. 2-3 brief bullet points (pointers) highlighting the best deal/recommendation based on "
+    "price, rating, or history. Do NOT write paragraphs or long sentences. Keep the entire "
+    "reply professional, sleek, and highly catchy.\n\n"
     "FINDING A PRODUCT:\n"
     "1. Call `search_products` with only the core keywords (strip filler like 'give me', "
     "'price of', 'best', 'cheap'). This searches ALL sources at once (Salesforce catalog + "
     "live Flipkart + Amazon) and returns merged results plus a per-source status.\n"
-    "2. Read the results. Do NOT call `refresh_products` automatically on search unless the user "
+    "2. If the user asks to search the product through any specific source (either 'Amazon Now' "
+    "or 'Amazon Fresh' or 'Flipkart Minutes'), it should definitely go to Salesforce to get "
+    "that specific product. However, it should also call the live websites (Amazon or "
+    "Flipkart Minutes) to check if those products are available and if any other similar "
+    "products are available on the live websites.\n"
+    "3. Read the results. Do NOT call `refresh_products` automatically on search unless the user "
     "explicitly asks to refresh/sync their store. The `sources` field tells you which sources "
     "responded. The `live_pending` field lists sources still being fetched live — their rows "
     "appear in the table shortly, so mention they're on the way rather than saying "
     "nothing was found.\n"
-    "3. Recommend the BEST option. Weigh current_price (lower is better), rating, "
+    "4. Recommend the BEST option. Weigh current_price (lower is better), rating, "
     "discount, and the user's own history (times_purchased, buy_suggestion — 'restock' "
     "and 'frequent' items are ones they rely on). State your pick in 1-2 lines citing the "
     "real numbers (e.g. 'Flipkart ₹249, 4.5★, you've bought this 5×').\n\n"
@@ -258,7 +270,7 @@ class ShoppingAgent:
                         call_counts[sig] = call_counts.get(sig, 0) + 1
                         logger.info("Agent step %d → tool %s args=%s", step, name, args)
                         output, ckout, pending = await self._dispatch(
-                            name, args, results, seen_result_ids, cart
+                            name, args, results, seen_result_ids, cart, messages
                         )
                         if ckout is not None:
                             last_checkout = ckout
@@ -303,6 +315,7 @@ class ShoppingAgent:
         results: list[ProductListing],
         seen_result_ids: set[str],
         cart: dict[str, AgentCartItem],
+        messages: list[ChatMessage] | None = None,
     ) -> tuple[dict, object | None, PendingLive | None]:
         """Execute one tool; mutate UI state; return (output, checkout, pending_live)."""
         s = self._settings
@@ -317,8 +330,30 @@ class ShoppingAgent:
             filters = SearchFilters(
                 min_price=args.get("min_price"), max_price=args.get("max_price")
             )
+
+            # Check for explicit "Amazon Now" or "Flipkart Minutes" requests
+            user_msg = ""
+            if messages:
+                for m in reversed(messages):
+                    if m.role == "user":
+                        user_msg = m.content.lower()
+                        break
+
+            q_lower = query.lower()
+            force_live_sources = []
+            has_amazon = (
+                "amazon now" in user_msg
+                or "amazon fresh" in user_msg
+                or "amazon now" in q_lower
+                or "amazon fresh" in q_lower
+            )
+            if has_amazon:
+                force_live_sources.append("amazon")
+            if "flipkart minutes" in user_msg or "flipkart minutes" in q_lower:
+                force_live_sources.append("flipkart")
+
             catalog, uncovered = await aggregator_agent.search_catalog(
-                query, s.sf_results_per_source, filters
+                query, s.sf_results_per_source, filters, force_live_sources=force_live_sources
             )
             self._absorb(catalog.listings, results, seen_result_ids)
             pending = (

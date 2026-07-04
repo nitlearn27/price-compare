@@ -18,7 +18,11 @@ class SalesforceAgent(SourceAgent):
     name = "salesforce"
 
     async def search(
-        self, query: str, limit: int, filters: SearchFilters | None = None
+        self,
+        query: str,
+        limit: int,
+        filters: SearchFilters | None = None,
+        exclude_titles: set[str] | None = None,
     ) -> SourceResult:
         records = await salesforce_client.search_products(query)
         listings = apply_filters(rank_and_group(records, query, limit), filters)

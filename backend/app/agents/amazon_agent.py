@@ -90,10 +90,16 @@ class AmazonAgent(SourceAgent):
     covers_source = "Amazon"  # catalog source__c this live spoke can stand in for
 
     async def search(
-        self, query: str, limit: int, filters: SearchFilters | None = None
+        self,
+        query: str,
+        limit: int,
+        filters: SearchFilters | None = None,
+        exclude_titles: set[str] | None = None,
     ) -> SourceResult:
         candidates = await search_amazon(query, _CANDIDATE_POOL)
         in_range = apply_filters(candidates, filters)
+        if exclude_titles:
+            in_range = [p for p in in_range if p.title.lower().strip() not in exclude_titles]
         best = rank_by_value(in_range, limit, query)
         for p in best:
             p.origin = "live"

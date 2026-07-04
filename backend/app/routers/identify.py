@@ -67,7 +67,6 @@ async def identify_image(request: IdentifyRequest) -> IdentifyResponse:
         # 1. Extract products using Gemini API (or OpenRouter fallback)
         gemini_result = await identify_products_in_image(request.image, request.mime_type)
         items = gemini_result.get("items", [])
-        summary = gemini_result.get("summary", "")
 
         # 2. Filter products by confidence (high and medium are reliable)
         product_names = [
@@ -89,15 +88,12 @@ async def identify_image(request: IdentifyRequest) -> IdentifyResponse:
 
         # Format items list for the chat bubble Markdown response
         items_list_md = "\n".join(
-            f"- **{item['name']}** ({item.get('confidence', 'unknown')} confidence)"
+            f"- **{item['name']}** ({item.get('confidence', 'unknown')})"
             for item in items
         )
         reply_msg = (
-            f"Here is a summary of what I found in your refrigerator/image:\n"
-            f"> {summary}\n\n"
             f"**Identified items:**\n{items_list_md}\n\n"
-            f"I have queried Salesforce for these products and updated "
-            f"the comparison table on the right."
+            f"Updated the comparison table with these products."
         )
 
         # 3. Find STAPLES TO RESTOCK: items the user buys regularly that are NOT
@@ -189,19 +185,16 @@ async def identify_image(request: IdentifyRequest) -> IdentifyResponse:
 
         if added_lines:
             reply_msg += (
-                "\n\nBased on your order history and a freshness check, I added these "
-                "run-low staples to your cart:\n"
+                "\n\nAdded run-low staples to cart:\n"
                 + "\n".join(f"- {line}" for line in added_lines)
             )
         if skipped_fresh:
             reply_msg += (
-                f"\n\nSkipped (bought within the last {_RECENT_PURCHASE_SKIP_DAYS} "
-                "days, so you should still have them): " + ", ".join(skipped_fresh)
+                "\n\nRecently bought (skipped): " + ", ".join(skipped_fresh)
             )
         if declined:
             reply_msg += (
-                "\n\nReviewed but did not add (analysis judged you likely still have "
-                "stock): " + ", ".join(declined)
+                "\n\nStock sufficient (skipped): " + ", ".join(declined)
             )
 
         # 4. Query Salesforce for each visible product in parallel

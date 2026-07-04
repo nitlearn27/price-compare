@@ -43,9 +43,19 @@ function formatDate(value: string | null): string {
 function groupBySource(listings: ProductListing[]): Map<string, ProductListing[]> {
   const map = new Map<string, ProductListing[]>();
   for (const item of listings) {
-    const existing = map.get(item.source) ?? [];
+    const srcLower = item.source.toLowerCase().trim();
+    let targetGroup = "";
+    if (srcLower.startsWith("amazon")) {
+      targetGroup = "Amazon";
+    } else if (srcLower.startsWith("flipkart")) {
+      targetGroup = "Flipkart";
+    } else {
+      continue; // Skip Croma, Reliance Digital, etc. as per request
+    }
+
+    const existing = map.get(targetGroup) ?? [];
     existing.push(item);
-    map.set(item.source, existing);
+    map.set(targetGroup, existing);
   }
   return map;
 }

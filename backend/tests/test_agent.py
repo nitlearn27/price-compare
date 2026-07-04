@@ -58,7 +58,7 @@ def stub_aggregator(monkeypatch, listings=None, uncovered=None):
     listings = listings or []
     uncovered = uncovered or []
 
-    async def fake_search_catalog(query, limit, filters=None):
+    async def fake_search_catalog(query, limit, filters=None, **kwargs):
         agg = AggregatedResult(
             listings=listings,
             sources=[

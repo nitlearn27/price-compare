@@ -73,7 +73,11 @@ class AggregatorAgent:
         return AggregatedResult(listings=self._merge(sources), sources=sources)
 
     async def search_catalog(
-        self, query: str, limit: int, filters: SearchFilters | None = None
+        self,
+        query: str,
+        limit: int,
+        filters: SearchFilters | None = None,
+        force_live_sources: list[str] | None = None,
     ) -> tuple[AggregatedResult, list[str]]:
         """Phase 1 — the fast catalog (Salesforce) tier. Returns the catalog result
         plus the names of live spokes whose source the catalog did NOT cover."""
@@ -106,11 +110,14 @@ class AggregatorAgent:
                 n for src, n in catalog_by_source.items() if src.startswith(covers)
             )
 
-        uncovered = [
-            sp.name
-            for sp in self._live
-            if covered_count((sp.covers_source or "").lower().strip()) < min_catalog
-        ]
+        force_set = {src.lower() for src in force_live_sources} if force_live_sources else set()
+        uncovered = []
+        for sp in self._live:
+            if sp.name.lower() in force_set:
+                uncovered.append(sp.name)
+            elif covered_count((sp.covers_source or "").lower().strip()) < min_catalog:
+                uncovered.append(sp.name)
+
         logger.info(
             "Catalog coverage by source: %s — uncovered live sources: %s",
             catalog_by_source,
@@ -143,6 +150,19 @@ class AggregatorAgent:
         if not spokes:
             return AggregatedResult(listings=[], sources=[])
 
+        # Query Salesforce to find existing catalog titles so we can exclude duplicates
+        exclude_titles = set()
+        try:
+            sf_records = await salesforce_client.search_products(query)
+            for r in sf_records:
+                title = r.get("Title__c") or r.get("Name")
+                if title:
+                    exclude_titles.add(title.lower().strip())
+        except Exception:
+            logger.warning(
+                "Failed to query Salesforce catalog to build exclude list", exc_info=True
+            )
+
         # Load the purchase-history map concurrently so enrichment adds no wait.
         history_task = (
             asyncio.create_task(self._load_history(s.aggregator_history_days))
@@ -150,7 +170,10 @@ class AggregatorAgent:
             else None
         )
         live_results = await asyncio.gather(
-            *(self._run_spoke(sp, query, limit, timeout, filters) for sp in spokes)
+            *(
+                self._run_spoke(sp, query, limit, timeout, filters, exclude_titles=exclude_titles)
+                for sp in spokes
+            )
         )
         history = await history_task if history_task is not None else {}
         for spoke, result in zip(spokes, live_results):
@@ -187,11 +210,15 @@ class AggregatorAgent:
         limit: int,
         timeout: float,
         filters: SearchFilters | None,
+        exclude_titles: set[str] | None = None,
     ) -> SourceResult:
         """Run one spoke with graceful degradation — a timeout or error becomes a
         status, never an exception that fails the whole search."""
         try:
-            return await asyncio.wait_for(spoke.search(query, limit, filters), timeout)
+            return await asyncio.wait_for(
+                spoke.search(query, limit, filters, exclude_titles=exclude_titles),
+                timeout,
+            )
         except TimeoutError:
             logger.warning("Spoke %s timed out after %.1fs", spoke.name, timeout)
             return SourceResult(
