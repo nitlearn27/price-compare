@@ -13,7 +13,6 @@ import { RefreshButtons } from "../components/refresh/RefreshButtons";
 import { OtpModal } from "../components/refresh/OtpModal";
 import { HeaderMenu } from "../components/header/HeaderMenu";
 import { STRINGS } from "../lib/strings";
-import { getSourceTheme } from "../lib/source-theme";
 
 type MobileTab = "chat" | "results";
 
@@ -140,15 +139,6 @@ export default function App() {
                 <h2 className="text-[15px] font-semibold text-white tracking-tight">
                   Product Comparison
                 </h2>
-                {productSearch.searchedVia === "flipkart" && resultCount > 0 && (
-                  <span
-                    className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full text-white"
-                    style={{ backgroundColor: getSourceTheme("Flipkart").accent }}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/90 animate-pulse" />
-                    {STRINGS.liveFlipkartBadge}
-                  </span>
-                )}
               </div>
               {resultCount > 0 ? (
                 <p className="text-xs text-white/60 mt-1">

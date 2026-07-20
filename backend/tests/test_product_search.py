@@ -5,6 +5,8 @@ from app.services.product_search import (
     _normalize,
     _parse_sf_date,
     _score,
+    filter_relevant,
+    min_relevance,
     rank_and_group,
 )
 
@@ -302,3 +304,38 @@ def test_normalize_parses_complex_rating_dict_string():
     record = make_record(Rating__c=rating_str)
     listing = _normalize(record)
     assert listing.rating == "4.3"
+
+
+# ── relevance filtering ──────────────────────────────────────────────────────
+
+
+def test_min_relevance_requires_full_match_when_present():
+    assert min_relevance([2, 1, 1], 2) == 2  # a full 2/2 match exists → require it
+    assert min_relevance([1, 1, 0], 2) == 1  # no full match → keep any partial
+    assert min_relevance([0, 0], 2) == 0  # nothing matches → keep everything
+    assert min_relevance([1, 1], 0) == 0  # no query tokens → keep everything
+
+
+def test_rank_and_group_drops_brand_only_partials_when_full_match_exists():
+    records = [
+        make_record(Id="1", Title__c="Nandini Butter 100g", Source__c="Flipkart"),
+        make_record(Id="2", Title__c="Nandini Curd 500g", Source__c="Flipkart"),
+        make_record(Id="3", Title__c="Nandini Paneer 200g", Source__c="Flipkart"),
+    ]
+    out = rank_and_group(records, "nandini butter")
+    assert [p.title for p in out] == ["Nandini Butter 100g"]
+
+
+def test_rank_and_group_keeps_partial_when_no_full_match():
+    records = [
+        make_record(Id="1", Title__c="Nandini Curd", Source__c="Flipkart"),
+        make_record(Id="2", Title__c="Amul Cheese", Source__c="Flipkart"),
+    ]
+    out = rank_and_group(records, "nandini butter")
+    assert [p.title for p in out] == ["Nandini Curd"]
+
+
+def test_filter_relevant_prunes_live_rows():
+    butter = _normalize(make_record(Title__c="Amul Butter", Source__c="Amazon"))
+    curd = _normalize(make_record(Title__c="Amul Curd", Source__c="Amazon"))
+    assert [p.title for p in filter_relevant([butter, curd], "amul butter")] == ["Amul Butter"]

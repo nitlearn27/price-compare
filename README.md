@@ -28,25 +28,24 @@ AI-powered shopping assistant that compares product prices across Indian e-comme
 ## Architecture
 
 ```
-User → React chat UI ─────────► FastAPI /api/chat ─────► OpenRouter LLM (tool calling)
-                                                              │
-                                                              ▼
-                                                       returns ProductQuery
-                                                              │
-                       ◄──── grouped top-3 per source ◄── /api/products/search
-                                                              │
-                                                              ▼
-                                              Salesforce REST API (SOQL on Product__c)
-                                              OAuth 2.0 Client Credentials Flow
+User → React chat UI ──► /api/agent/chat[/stream] ──► LangGraph StateGraph (agent ⇄ tools → finalize)
+                              LLM: DeepSeek (OpenRouter fallback), OpenAI-style tool calling
+                              tools: search_products ─► AggregatorAgent (hub-spoke):
+                                        1. Salesforce catalog (fast, has purchase history)
+                                        2. live Flipkart/Amazon scrapers (only for
+                                           sources the catalog didn't cover)
+                                     get_purchase_history · add_to_cart · checkout · refresh_products
+        ◄── reply + comparison table + cart + pending_live (phase-2 rows via /api/products/live)
 ```
 
 | Layer       | Stack                                                           |
 | ----------- | --------------------------------------------------------------- |
 | Frontend    | React 18, Vite, TypeScript, Tailwind CSS, lucide-react          |
-| Backend     | FastAPI (Python 3.11+), httpx (async), Pydantic v2              |
-| LLM         | OpenRouter (configurable model — defaults to `openai/gpt-oss-120b`) |
-| Data store  | Salesforce `Product__c` custom object via REST API              |
-| Tests       | pytest + respx (BE), Vitest + RTL (FE), Playwright (E2E)        |
+| Backend (prod) | Cloudflare Worker — Hono + `@langchain/langgraph` (TypeScript), serves the SPA |
+| Backend (reference) | FastAPI (Python 3.11+), httpx (async), Pydantic v2, LangGraph |
+| LLM         | DeepSeek (primary) with OpenRouter fallback — tool calling      |
+| Data store  | Salesforce `Grocery_Product__c` custom object via REST API      |
+| Tests       | pytest + respx (BE), Vitest + RTL (FE + worker), Playwright (E2E) |
 
 ---
 
@@ -59,18 +58,25 @@ price-compare/
 ├── .env.example          # All env vars documented
 ├── frontend/             # Vite + React app
 │   ├── src/
-│   │   ├── components/chat/      # ChatWindow, MessageBubble, ChatInput
-│   │   ├── components/results/   # ComparisonTable, SourceBadge, RatingStars
-│   │   ├── hooks/                # useChat, useProductSearch
+│   │   ├── components/           # chat/, results/, cart/, recommendations/, refresh/
+│   │   ├── hooks/                # useChat, useProductSearch, useCart, useRecommendations
 │   │   ├── lib/                  # api, types, source-theme, strings
 │   │   ├── pages/App.tsx
 │   │   └── styles/index.css      # dark aurora background, glass utilities
 │   └── tests/                    # Vitest unit + Playwright e2e
-└── backend/              # FastAPI app
+├── worker/               # Cloudflare Worker (TypeScript) — the DEPLOYED backend
+│   ├── src/
+│   │   ├── agent/        # llm, tools, LangGraph StateGraph + ShoppingAgent
+│   │   ├── agents/       # aggregator (hub) + salesforce/flipkart/amazon spokes
+│   │   ├── lib/          # config, salesforce, product_search, cart, otp, refresh, …
+│   │   ├── routers/      # agent, identify, products, cart, orders, recommendations
+│   │   └── models/       # schemas.ts (wire types, snake_case)
+│   └── wrangler.jsonc    # non-secret config; secrets via `wrangler secret put`
+└── backend/              # FastAPI app (reference implementation / local dev)
     ├── app/
     │   ├── main.py
-    │   ├── routers/      # chat.py, products.py
-    │   ├── services/     # openrouter.py, salesforce.py, product_search.py
+    │   ├── routers/      # agent.py, identify.py, products.py, cart.py, orders.py, …
+    │   ├── services/     # agent.py, agent_graph.py, salesforce.py, product_search.py, …
     │   ├── models/       # schemas.py
     │   └── core/         # config.py, logging.py
     └── tests/            # pytest + fixtures/salesforce/*.json
@@ -227,13 +233,16 @@ lsof -ti:8000,5173 | xargs kill -9 2>/dev/null
 
 ## How it works
 
-### Chat → tool call
+### The agent loop
 
-`POST /api/chat` forwards the full conversation history to OpenRouter with a `search_products` function tool. The model decides whether to call the tool (any product mention) or reply conversationally (greetings, clarifications). Tool arguments come back as a structured `ProductQuery` — never parsed from prose.
+`POST /api/agent/chat` (or the SSE variant `/api/agent/chat/stream`) runs a LangGraph
+`StateGraph` server-side: the model observes real tool results, reasons, and acts again
+until it has a final answer. Tools: `search_products` (hub-spoke aggregator),
+`get_purchase_history`, `add_to_cart`, `checkout` (gated on explicit user confirmation),
+and `refresh_products`. Guardrails cap steps, tokens, tool calls per step, and identical
+repeat calls. With a `thread_id`, conversation + cart persist across turns server-side.
 
-### Salesforce lookup
-
-`POST /api/products/search` (called immediately after a tool call):
+### Salesforce lookup (inside `search_products`)
 
 1. **Tokenize** the query, drop stopwords (`a`, `the`, `price`, `best`, etc.), cap at 5 tokens.
 2. **AND-of-tokens** SOQL: `title__c LIKE '%t1%' AND title__c LIKE '%t2%' ...`. Properly escaped (`\`, `'`, `%`, `_`).
@@ -242,14 +251,19 @@ lsof -ti:8000,5173 | xargs kill -9 2>/dev/null
 
 Auth uses **OAuth 2.0 Client Credentials Flow**. The token is cached in memory and refreshed ~5 min before expiry. On a 401 from a data call, the backend invalidates the token, re-auths once, and retries.
 
-### Ranking + grouping (Python-side)
+Live Flipkart/Amazon spokes run only for sources the catalog didn't cover (prefix
+match — "Amazon" covers "Amazon Now"/"Amazon Fresh"); their slow rows arrive as a
+phase-2 `POST /api/products/live` fetch that the UI appends to the table.
+
+### Ranking + grouping
 
 Salesforce can't do per-group `LIMIT`, so:
 
 1. Group records by `source__c`.
-2. Score each: **+10** if the full query is a substring of the title, **+1** per token whole-word match. Tiebreak by rating, then review count.
+2. Sort by query relevance (token hits in the title), then times purchased, then vendor rank.
 3. Keep top 3 per source. Don't pad — fewer matches → return what's available.
-4. Compute `discount__c` from current/original price if it's null.
+4. Compute `discount__c` from current/original price if it's null, and derive a
+   buy suggestion (`new`/`frequent`/`restock`/`recent`) from purchase history.
 
 ---
 
@@ -268,43 +282,28 @@ The frontend ships with a polished **dark, Apple-style aesthetic**:
 
 ## API reference
 
-### `POST /api/chat`
+### `POST /api/agent/chat`
 
 Request:
 ```json
 {
   "messages": [
     { "role": "user", "content": "find me a OnePlus 12" }
-  ]
+  ],
+  "thread_id": "optional-session-uuid"
 }
 ```
 
 Response:
 ```json
 {
-  "reply": "Searching for **OnePlus 12**…",
-  "product_query": {
-    "query": "OnePlus 12",
-    "category": null, "min_price": null, "max_price": null,
-    "brand": null, "sources": null
-  }
-}
-```
-
-When the model replies conversationally instead of calling the tool, `product_query` is `null`.
-
-### `POST /api/products/search`
-
-Request: `ProductQuery` (same shape as above).
-
-Response:
-```json
-{
+  "reply": "Here are the best OnePlus 12 deals…",
   "results": [
     {
       "id": "a001A00000AbCdEQAV",
       "title": "OnePlus 12 5G 256GB Black",
       "source": "Amazon",
+      "origin": "catalog",
       "current_price": 62999,
       "original_price": 69999,
       "discount": 10,
@@ -312,13 +311,32 @@ Response:
       "review_count": 12400,
       "rank": 3,
       "product_url": "https://amazon.in/dp/B0ABCDE",
-      "image_url": "https://m.media-amazon.com/images/I/abc.jpg"
+      "image_url": "https://m.media-amazon.com/images/I/abc.jpg",
+      "times_purchased": 2,
+      "buy_suggestion": "restock"
     }
-  ]
+  ],
+  "cart": [],
+  "checkout": null,
+  "pending_live": { "query": "OnePlus 12", "sources": ["flipkart"] },
+  "thread_id": "optional-session-uuid"
 }
 ```
 
-Already grouped by source and capped at 3 per source.
+`results` is grouped by source, top 3 per source. With a `thread_id` the server keeps
+conversation + cart across turns (send only the newest message). If `pending_live` is
+set, fetch the slow live rows with `POST /api/products/live` and append them.
+
+### `POST /api/agent/chat/stream`
+
+Same request; responds as Server-Sent Events: `status` → `results` → `pending_live` →
+`reply` → `done` (the full response above) or `error`. The UI prefers this endpoint and
+falls back to `/api/agent/chat` only if the stream never starts.
+
+### Other endpoints
+
+`POST /api/products/live` · `POST /api/cart/checkout` · `POST /api/recommendations/next-purchase` ·
+`POST /api/identify` (photo) · `POST /api/products/refresh` · `POST /api/otp`.
 
 ---
 
@@ -326,13 +344,14 @@ Already grouped by source and capped at 3 per source.
 
 | Suite              | Command                               | Status                       |
 | ------------------ | ------------------------------------- | ---------------------------- |
-| Backend unit + integration | `cd backend && pytest`        | **169 tests, 82% coverage**   |
-| Frontend unit + component  | `cd frontend && pnpm test`    | **133 tests passed**          |
+| Backend unit + integration | `cd backend && pytest`        | **149 tests, ~81% coverage**  |
+| Frontend unit + component  | `cd frontend && pnpm test`    | **138 tests passed**          |
+| Worker unit               | `cd worker && pnpm test`       | vitest, mocked `fetch`        |
 | Frontend type check        | `cd frontend && pnpm typecheck` | clean                      |
 | Backend lint               | `cd backend && ruff check .`  | clean                        |
 | E2E (requires both servers) | `cd frontend && pnpm test:e2e` | Playwright                  |
 
-Both Salesforce and OpenRouter are mocked in unit tests (`respx`), so no real credentials are needed to run them. Test fixtures for Salesforce responses live in `backend/tests/fixtures/salesforce/`.
+All external HTTP (Salesforce, DeepSeek/OpenRouter, scrapers) is mocked in unit tests (`respx` / vitest), so no real credentials are needed to run them. Test fixtures for Salesforce responses live in `backend/tests/fixtures/salesforce/`.
 
 ---
 
@@ -348,8 +367,10 @@ All config via environment variables. See `.env.example` for the canonical list.
 | `SF_API_VERSION`        | Salesforce REST API version                          | `60.0`                                                   |
 | `SF_QUERY_LIMIT`        | Max records pulled from SOQL before ranking          | `200`                                                    |
 | `SF_RESULTS_PER_SOURCE` | Top N per source returned to FE                      | `3`                                                      |
-| `OPENROUTER_API_KEY`    | OpenRouter API key                                   | *(required)*                                             |
+| `DEEPSEEK_API_KEY`      | DeepSeek API key (primary agent LLM)                 | *(required)*                                             |
+| `OPENROUTER_API_KEY`    | OpenRouter API key (fallback LLM)                    | *(optional)*                                             |
 | `OPENROUTER_MODEL`      | OpenRouter model id                                  | `openai/gpt-oss-120b`                                    |
+| `GEMINI_API_KEY`        | Google Gemini key (photo identify)                   | *(optional)*                                             |
 | `CORS_ALLOW_ORIGINS`    | Comma-separated origins for CORS                     | `http://localhost:5173`                                  |
 | `LOG_LEVEL`             | Python log level                                     | `INFO`                                                   |
 | `RECOMMENDATION_API_URL`| "Next purchase" recommendation engine endpoint       | `https://insight-generation-production.up.railway.app/api/insights/next-purchase` |
@@ -366,6 +387,25 @@ When checking out, products are routed to their respective vendor APIs (`FLIPKAR
 - Prompts the user with recommended items to buy based on previous purchase frequency and recency.
 - Recommendation items are enriched with high-quality product images by querying `image_url__c` from Salesforce.
 - Ratings returned in JSON format from the Amazon search microservice are automatically parsed and normalized for display.
+
+---
+
+## Deployment (Cloudflare Workers)
+
+The app deploys as a single Cloudflare Worker (`worker/`) that serves both the `/api/*`
+backend and the built SPA as static assets:
+
+```bash
+cd frontend && pnpm build          # build the SPA
+cd ../worker
+./scripts/put-secrets.sh           # once, or when a secret value changes
+pnpm exec wrangler deploy          # → https://price-compare.<account>.workers.dev
+```
+
+Non-secret config lives in `worker/wrangler.jsonc`; the six secrets (`SF_TOKEN_URL`,
+`SF_CLIENT_ID`, `SF_CLIENT_SECRET`, `DEEPSEEK_API_KEY`, `OPENROUTER_API_KEY`,
+`GEMINI_API_KEY`) are encrypted Wrangler secrets and persist across deploys.
+See `worker/README.md` for the full guide.
 
 ---
 

@@ -189,32 +189,68 @@ def _normalize(record: dict, today: date | None = None) -> ProductListing:
     )
 
 
+def query_tokens(query: str) -> list[str]:
+    """Tokenize a query the way the SOQL builder does: split, drop stopwords,
+    lowercase. Falls back to the raw split if every token is a stopword."""
+    from app.services.salesforce import _filter_tokens
+    tokens = _filter_tokens(query.split()) if query else []
+    if not tokens:
+        tokens = query.split() if query else []
+    return [t.lower() for t in tokens]
+
+
+def relevance_of_title(title: str, tokens: list[str]) -> int:
+    """How many of the query tokens appear (as substrings) in a title."""
+    title_lower = (title or "").lower()
+    return sum(1 for t in tokens if t in title_lower)
+
+
+def min_relevance(relevances: list[int], n_tokens: int) -> int:
+    """Minimum relevance a row must clear to count as on-topic. If ANY row matches
+    every token, require a full match (drops brand-only/type-only partials like
+    "Nandini Curd" for "nandini butter"); else require >=1 token; if nothing
+    matches, keep everything."""
+    if n_tokens == 0:
+        return 0
+    if any(r == n_tokens for r in relevances):
+        return n_tokens
+    if any(r > 0 for r in relevances):
+        return 1
+    return 0
+
+
+def filter_relevant(items: list[ProductListing], query: str) -> list[ProductListing]:
+    """Drop already-normalized listings not relevant to the query (same rule as the
+    catalog ranking). Used for live scraper rows, which the store's fuzzy search
+    otherwise returns loosely related to the query."""
+    tokens = query_tokens(query)
+    if not tokens or not items:
+        return items
+    rels = [relevance_of_title(p.title, tokens) for p in items]
+    minimum = min_relevance(rels, len(tokens))
+    return [p for p, r in zip(items, rels) if r >= minimum]
+
+
 def rank_and_group(
     records: list[dict],
     query: str,
     per_source: int = 3,
 ) -> list[ProductListing]:
-    from app.services.salesforce import _filter_tokens
-    query_tokens = _filter_tokens(query.split()) if query else []
-    if not query_tokens:
-        query_tokens = query.lower().split() if query else []
-    query_tokens = [t.lower() for t in query_tokens]
+    tokens = query_tokens(query)
 
     def get_relevance(record: dict) -> int:
         title = _ci_get(record, "Title__c") or _ci_get(record, "Name") or ""
-        title_lower = title.lower()
-        return sum(1 for t in query_tokens if t in title_lower)
+        return relevance_of_title(title, tokens)
+
+    relevances = [get_relevance(r) for r in records]
+    # Require a full-token match when one exists, else drop zero-relevance rows.
+    minimum = min_relevance(relevances, len(tokens))
 
     groups: dict[str, list[tuple]] = {}
-    has_any_match = any(get_relevance(r) > 0 for r in records) if query_tokens else False
-
-    for record in records:
-        source = _ci_get(record, "Source__c") or "Unknown"
-        relevance = get_relevance(record)
-        # Discard completely irrelevant results that matched a loose OR query
-        # only if we found at least one record that actually matches the keywords
-        if has_any_match and relevance == 0:
+    for record, relevance in zip(records, relevances):
+        if relevance < minimum:
             continue
+        source = _ci_get(record, "Source__c") or "Unknown"
         groups.setdefault(source, []).append(((relevance, _score(record)), record))
 
     result: list[ProductListing] = []

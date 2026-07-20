@@ -1,7 +1,7 @@
 """The shopping agent — a real agentic tool-use loop.
 
-Unlike ``openrouter.py`` (which makes ONE model call and reads only the tool
-*arguments*), this runs the classic agentic loop:
+Rather than making one model call and reading only the tool *arguments*, this
+runs the classic agentic loop:
 
     while the model wants to use a tool:
         execute the tool  →  feed the RESULT back to the model  →  let it re-reason
@@ -12,8 +12,6 @@ cart), and only stops when it has a final answer for the user. Money-spending
 (``checkout``) is gated: the model is instructed never to call it until the user
 explicitly confirms, and the tool itself refuses an unconfirmed call.
 """
-
-import json
 
 import httpx
 
@@ -28,6 +26,7 @@ from app.models.schemas import (
     PendingLive,
     ProductListing,
 )
+from app.services.agent_graph import AgentState, build_graph, enable_tracing, make_checkpointer
 from app.services.cart import submit_cart
 from app.services.product_search import _normalize
 from app.services.refresh import SOURCE_LABELS, trigger_refresh
@@ -41,6 +40,16 @@ _OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 # tool calls are short-circuited so a stuck model can't loop on the same action.
 # Set to 2 so a refresh→re-search flow still works, but pathological repeats don't.
 _MAX_IDENTICAL_CALLS = 2
+
+# Human-readable status shown in the UI (via the SSE stream) when the model is
+# about to run each tool.
+_TOOL_STATUS = {
+    "search_products": "Searching the catalog…",
+    "get_purchase_history": "Checking your purchase history…",
+    "refresh_products": "Syncing your store…",
+    "add_to_cart": "Updating your cart…",
+    "checkout": "Placing your order…",
+}
 
 _SYSTEM_PROMPT = (
     "You are an autonomous shopping agent for an Indian grocery & product app. "
@@ -58,7 +67,11 @@ _SYSTEM_PROMPT = (
     "FINDING A PRODUCT:\n"
     "1. Call `search_products` with only the core keywords (strip filler like 'give me', "
     "'price of', 'best', 'cheap'). This searches ALL sources at once (Salesforce catalog + "
-    "live Flipkart + Amazon) and returns merged results plus a per-source status.\n"
+    "live Flipkart + Amazon) and returns merged results plus a per-source status. ALWAYS call "
+    "`search_products` for a product or price query — even if you already searched the same or a "
+    "similar item earlier in this conversation. Prices, availability, and live-store rows change, "
+    "and the on-screen comparison grid is refreshed ONLY from a fresh search. Never answer a "
+    "product/price query from earlier results without searching again.\n"
     "2. If the user asks to search the product through any specific source (either 'Amazon Now' "
     "or 'Amazon Fresh' or 'Flipkart Minutes'), it should definitely go to Salesforce to get "
     "that specific product. However, it should also call the live websites (Amazon or "
@@ -208,105 +221,143 @@ def _compact(p: ProductListing) -> dict:
 
 
 class ShoppingAgent:
+    # A tool signature may execute at most this many times per run. Exposed as a
+    # class attribute so the graph's tools node reads it without importing the
+    # module constant (which would create an import cycle with agent_graph).
+    MAX_IDENTICAL_CALLS = _MAX_IDENTICAL_CALLS
+
     def __init__(self) -> None:
         self._settings = get_settings()
+        self._graph = None  # stateless graph (no checkpointer), built lazily
+        self._graph_ckpt = None  # checkpointer-backed graph (persistent state)
+        enable_tracing(self._settings)
 
-    async def run(self, messages: list[ChatMessage]) -> AgentResponse:
-        # Side-channel UI state accumulated across tool calls: the comparison
-        # table (`results`) and the cart. These are returned to the frontend
-        # alongside the model's final text.
-        s = self._settings
-        results: list[ProductListing] = []
-        seen_result_ids: set[str] = set()
-        cart: dict[str, AgentCartItem] = {}
-        last_checkout = None
-        last_pending_live = None  # slow live sources still owed to the frontend
+    def _get_graph(self):
+        # Built lazily so tests that mutate `self._settings` before the first
+        # `run()` are honored. Guardrail values are read live inside the nodes.
+        if self._graph is None:
+            self._graph = build_graph(self)
+        return self._graph
 
-        # Guardrail accounting.
-        total_tokens = 0  # cumulative usage across the loop
-        call_counts: dict[str, int] = {}  # signature → times executed (repeat guard)
+    def _get_ckpt_graph(self):
+        if self._graph_ckpt is None:
+            self._graph_ckpt = build_graph(
+                self, checkpointer=make_checkpointer(self._settings.agent_checkpointer)
+            )
+        return self._graph_ckpt
 
-        convo: list[dict] = [
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            *[{"role": m.role, "content": m.content} for m in messages],
-        ]
+    def _fresh_state(self, messages: list[ChatMessage]) -> AgentState:
+        """A first-turn state: seed the system prompt + full client history."""
+        return {
+            "messages": [
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                *[{"role": m.role, "content": m.content} for m in messages],
+            ],
+            "results": [],
+            "cart": {},
+            "pending_live": None,
+            "checkout": None,
+            "total_tokens": 0,
+            "call_counts": {},
+            "step": 0,
+            "reply": "",
+            "last_query": "",
+        }
 
-        for step in range(s.agent_max_steps):
-            data = await self._call_llm(convo)
-            total_tokens += int((data.get("usage") or {}).get("total_tokens") or 0)
-            msg = data["choices"][0]["message"]
-            tool_calls = msg.get("tool_calls") or []
-
-            if not tool_calls:
-                return AgentResponse(
-                    reply=msg.get("content") or "",
-                    results=results,
-                    cart=list(cart.values()),
-                    checkout=last_checkout,
-                    pending_live=last_pending_live,
-                )
-
-            # The assistant message that carries the tool_calls MUST be appended
-            # before the matching tool results, or the next call is malformed.
-            convo.append(msg)
-
-            for i, tc in enumerate(tool_calls):
-                name = tc["function"]["name"]
-                try:
-                    args = json.loads(tc["function"]["arguments"] or "{}")
-                except json.JSONDecodeError:
-                    args = {}
-
-                # Guardrail: cap the number of tools actually executed per step.
-                # We still emit a tool result for every call (required by the API
-                # message contract), but skip running the overflow ones.
-                if i >= s.agent_max_tool_calls_per_step:
-                    output = {"error": "skipped: too many tool calls this step"}
-                else:
-                    sig = f"{name}:{json.dumps(args, sort_keys=True)}"
-                    if call_counts.get(sig, 0) >= _MAX_IDENTICAL_CALLS:
-                        output = {"note": "already executed this exact call; do not repeat it"}
-                    else:
-                        call_counts[sig] = call_counts.get(sig, 0) + 1
-                        logger.info("Agent step %d → tool %s args=%s", step, name, args)
-                        output, ckout, pending = await self._dispatch(
-                            name, args, results, seen_result_ids, cart, messages
-                        )
-                        if ckout is not None:
-                            last_checkout = ckout
-                        if pending is not None:
-                            last_pending_live = pending
-
-                convo.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": tc["id"],
-                        "content": json.dumps(output),
-                    }
-                )
-
-            # Guardrail: stop spending if the cumulative token budget is blown.
-            if total_tokens >= s.agent_token_budget:
-                logger.warning(
-                    "Agent token budget exceeded (%d ≥ %d) — finalizing",
-                    total_tokens,
-                    s.agent_token_budget,
-                )
-                break
-
-        # Loop exhausted (step cap or token budget) — ask for a final answer
-        # with tools disabled so it must respond in prose.
-        data = await self._call_llm(convo, allow_tools=False)
-        reply = data["choices"][0]["message"].get("content") or (
-            "I wasn't able to finish that — could you rephrase?"
-        )
+    def _to_response(self, final: dict, thread_id: str | None) -> AgentResponse:
         return AgentResponse(
-            reply=reply,
-            results=results,
-            cart=list(cart.values()),
-            checkout=last_checkout,
-            pending_live=last_pending_live,
+            reply=final.get("reply") or "",
+            results=final.get("results") or [],
+            cart=list((final.get("cart") or {}).values()),
+            checkout=final.get("checkout"),
+            pending_live=final.get("pending_live"),
+            thread_id=thread_id,
         )
+
+    async def _prepare_invocation(
+        self, messages: list[ChatMessage], thread_id: str | None
+    ) -> tuple[object, dict, dict]:
+        """Pick the graph (stateless vs. checkpointer-backed) and seed the input.
+
+        With a `thread_id` (and the checkpointer enabled) the cart + message
+        history PERSIST across turns: the client sends only the newest turn, and
+        only the per-run channels are reset. Without one, every turn is stateless
+        and the client owns the full history (backward-compatible default).
+        Returns (graph, init_state, config).
+        """
+        s = self._settings
+        # recursion_limit is only a backstop — the step/token routing in
+        # route_after_tools terminates the graph first.
+        config: dict = {"recursion_limit": s.agent_max_steps * 3 + 5}
+
+        if not thread_id or s.agent_checkpointer == "none":
+            return self._get_graph(), self._fresh_state(messages), config
+
+        graph = self._get_ckpt_graph()
+        config["configurable"] = {"thread_id": thread_id}
+        prev = await graph.aget_state(config)
+        if prev.values.get("messages"):
+            # Continuing thread: append only the new turn(s); reset the per-run
+            # channels; `cart` + `messages` carry over from the checkpoint.
+            init: dict = {
+                "messages": [{"role": m.role, "content": m.content} for m in messages],
+                "results": [],
+                "pending_live": None,
+                "checkout": None,
+                "total_tokens": 0,
+                "call_counts": {},
+                "step": 0,
+                "reply": "",
+                "last_query": "",
+            }
+        else:
+            init = self._fresh_state(messages)
+        return graph, init, config
+
+    async def run(
+        self, messages: list[ChatMessage], thread_id: str | None = None
+    ) -> AgentResponse:
+        # The observe→reason→act loop, the guardrails, and the side-channel UI
+        # state now live in the LangGraph state machine (agent_graph.py). This
+        # seeds the initial state and maps the final state to the wire response.
+        graph, init, config = await self._prepare_invocation(messages, thread_id)
+        final = await graph.ainvoke(init, config)
+        return self._to_response(final, thread_id)
+
+    async def run_stream(self, messages: list[ChatMessage], thread_id: str | None = None):
+        """Async generator yielding (event, data) tuples as the graph runs, for
+        SSE. Events: `status` (a tool is about to run), `results`/`pending_live`
+        (as a search lands), `reply` (final text), `done` (full AgentResponse)."""
+        graph, init, config = await self._prepare_invocation(messages, thread_id)
+        final_state: dict = {}
+        # "values" gives the full accumulated state (for the final snapshot, incl.
+        # a cart carried over from the checkpoint); "updates" drives the events.
+        async for mode, chunk in graph.astream(init, config, stream_mode=["updates", "values"]):
+            if mode == "values":
+                final_state = chunk
+                continue
+            for node, update in chunk.items():
+                if node == "agent":
+                    msg = (update.get("messages") or [{}])[-1]
+                    tool_calls = msg.get("tool_calls") or []
+                    for tc in tool_calls:
+                        label = _TOOL_STATUS.get(tc.get("function", {}).get("name", ""))
+                        if label:
+                            yield "status", {"message": label}
+                    if not tool_calls and update.get("reply"):
+                        yield "reply", {"reply": update["reply"]}
+                elif node == "tools":
+                    if "results" in update:
+                        yield "results", {"results": [r.model_dump() for r in update["results"]]}
+                    if update.get("pending_live") is not None:
+                        yield "pending_live", {"pending_live": update["pending_live"].model_dump()}
+                elif node == "validate":
+                    # Refined result set from the semantic pass (only when it changed).
+                    if "results" in update:
+                        yield "results", {"results": [r.model_dump() for r in update["results"]]}
+                elif node == "finalize" and update.get("reply"):
+                    yield "reply", {"reply": update["reply"]}
+        yield "done", self._to_response(final_state, thread_id).model_dump()
 
     async def _dispatch(
         self,

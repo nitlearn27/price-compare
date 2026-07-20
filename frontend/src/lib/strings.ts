@@ -23,7 +23,6 @@ export const STRINGS = {
 
   flipkartFallbackMessage:
     "I couldn't find that in our catalog, so I'm searching Flipkart for live results…",
-  liveFlipkartBadge: "Live from Flipkart",
 
   tableIdleHeading: "Ready when you are",
   tableIdleSubtext: "Ask the assistant about a product and comparisons will show up here.",

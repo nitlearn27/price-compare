@@ -14,6 +14,12 @@ dependencies = [
     "httpx==0.28.1",
     "pydantic==2.13.4",
     "pydantic-settings==2.14.1",
+    # Agent orchestration. langchain-core is pinned explicitly (langgraph pulls it
+    # transitively) so cloud builds stay reproducible. We use only the StateGraph +
+    # checkpointer core — NOT the full `langchain` meta-package — to keep the image
+    # light.
+    "langgraph==0.2.76",
+    "langchain-core==0.3.86",
 ]
 
 [project.optional-dependencies]

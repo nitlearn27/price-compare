@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import type { UIMessage, CartItem } from "../lib/types";
+import type { AgentResponse, UIMessage, CartItem } from "../lib/types";
 import { api } from "../lib/api";
 import { useProductSearch } from "./useProductSearch";
 
@@ -13,6 +13,13 @@ export function useChat(cart?: { add: (item: CartItem) => void }) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const productSearch = useProductSearch();
+  // A per-session thread id lets the server persist conversation + cart state
+  // across turns (LangGraph checkpointer); we then send only the newest turn.
+  const [threadId] = useState(() =>
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : String(Date.now()),
+  );
 
   const addMessage = useCallback((role: UIMessage["role"], content: string): UIMessage => {
     const msg: UIMessage = { id: nextId(), role, content };
@@ -68,16 +75,44 @@ export function useChat(cart?: { add: (item: CartItem) => void }) {
             });
           }
         } else {
-          const history = [
-            ...messages,
-            { role: "user" as const, content: trimmed },
-          ];
           // The agent runs a tool-use loop server-side: it searches, reasons over
           // the results (falling back to live Flipkart itself when needed), and
-          // returns the chat reply, the comparison table, and any cart additions
-          // in a single response.
+          // returns the chat reply, the comparison table, and any cart additions.
+          // With a thread_id the server holds the history + cart, so we send only
+          // this turn. We prefer the streaming endpoint (progressive status +
+          // results) and fall back to the single-shot call only if the stream
+          // never starts — never after a turn has begun, so a checkout that
+          // already ran server-side is not re-executed.
           productSearch.setLoading(true);
-          const agentResp = await api.agentChat({ messages: history });
+          const req = {
+            messages: [{ role: "user" as const, content: trimmed }],
+            thread_id: threadId,
+          };
+          let agentResp: AgentResponse;
+          if (api.agentChatStream) {
+            let progressed = false;
+            try {
+              agentResp = await api.agentChatStream(req, {
+                onStatus: () => {
+                  progressed = true;
+                },
+                onResults: (r) => {
+                  progressed = true;
+                  productSearch.setResults(r, "salesforce");
+                },
+                // A reply means the turn completed server-side (history already
+                // persisted for this thread) — falling back would re-run it.
+                onReply: () => {
+                  progressed = true;
+                },
+              });
+            } catch (streamErr) {
+              if (progressed) throw streamErr;
+              agentResp = await api.agentChat(req);
+            }
+          } else {
+            agentResp = await api.agentChat(req);
+          }
           addMessage("assistant", agentResp.reply);
           productSearch.setResults(agentResp.results, "salesforce");
 
@@ -113,7 +148,7 @@ export function useChat(cart?: { add: (item: CartItem) => void }) {
         setIsLoading(false);
       }
     },
-    [messages, isLoading, addMessage, productSearch, cart]
+    [isLoading, addMessage, productSearch, cart, threadId]
   );
 
   const submitExample = useCallback(

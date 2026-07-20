@@ -1,11 +1,9 @@
 # Architecture — Price Compare
 
-High-level view of how a request flows from the browser, through the FastAPI
-backend's router and service layers, out to the external systems the app
-integrates with.
-
-> Note: this diagram reflects the **live codebase** (7 routers / 11 services),
-> which has grown beyond the single chat→search loop described in `CLAUDE.md`.
+High-level view of how a request flows from the browser, through the backend's
+router and service layers, out to the external systems the app integrates with.
+All searching happens inside the LangGraph agent (`/api/agent/chat[/stream]`);
+the only other product endpoint is the phase-2 `/api/products/live` fetch.
 
 ```mermaid
 flowchart TD
@@ -23,24 +21,23 @@ flowchart TD
         UI_Refresh --> API
     end
 
-    subgraph Backend["FastAPI backend — backend/app (routes under /api)"]
+    subgraph Backend["Backend — routes under /api (Python reference · TS worker in prod)"]
         direction TB
         subgraph Routers["Router layer"]
-            R_chat["chat.py<br/>POST /chat"]
-            R_agent["agent.py<br/>POST /agent/chat"]
+            R_agent["agent.py<br/>POST /agent/chat<br/>POST /agent/chat/stream (SSE)"]
             R_identify["identify.py<br/>POST /identify"]
-            R_products["products.py<br/>POST /products/search<br/>POST /products/search/flipkart"]
+            R_products["products.py<br/>POST /products/live"]
             R_recs["recommendations.py<br/>POST /recommendations/next-purchase"]
             R_cart["cart.py<br/>POST /cart/checkout"]
             R_orders["orders.py<br/>POST /products/refresh<br/>POST /otp"]
         end
         subgraph Services["Service layer"]
-            S_openrouter["openrouter"]
-            S_agent["agent"]
+            S_agent["agent + agent_graph<br/>(LangGraph StateGraph)"]
+            S_agg["aggregator<br/>(hub-spoke)"]
             S_gemini["gemini"]
             S_salesforce["salesforce"]
             S_psearch["product_search<br/>(rank + group)"]
-            S_flipkart["flipkart_search"]
+            S_live["flipkart_search /<br/>amazon_search"]
             S_recs["recommendations"]
             S_cart["cart"]
             S_refresh["refresh"]
@@ -49,15 +46,14 @@ flowchart TD
     end
 
     subgraph External["External systems"]
-        X_OR(["OpenRouter LLM"])
+        X_LLM(["DeepSeek LLM<br/>(OpenRouter fallback)"])
         X_Gem(["Google Gemini — vision"])
         X_SF[("Salesforce<br/>Grocery_Product__c")]
-        X_FK(["Flipkart live search"])
+        X_Store(["Flipkart / Amazon live search"])
         X_Vendor(["Vendor automation webhooks<br/>cart · refresh · OTP"])
     end
 
     %% Browser -> routers
-    API --> R_chat
     API --> R_agent
     API --> R_identify
     API --> R_products
@@ -65,24 +61,23 @@ flowchart TD
     API --> R_cart
     API --> R_orders
 
-    %% chat: deterministic "otp <number>" short-circuit before the LLM
-    R_chat -.->|"'otp NNNN' short-circuit"| S_otp
-    R_chat --> S_openrouter
-
-    %% agent
+    %% agent: deterministic "otp <number>" short-circuit before the LLM
+    R_agent -.->|"'otp NNNN' short-circuit"| S_otp
     R_agent --> S_agent
-    R_agent -.->|otp short-circuit| S_otp
-    S_agent --> S_salesforce
+    S_agent --> S_agg
+    S_agent --> S_cart
+    S_agent --> S_refresh
+    S_agg --> S_salesforce
+    S_agg --> S_live
+    S_salesforce --> S_psearch
 
     %% identify (image)
     R_identify --> S_gemini
     R_identify --> S_salesforce
     R_identify --> S_psearch
 
-    %% catalog search + flipkart fallback
-    R_products --> S_salesforce
-    S_salesforce --> S_psearch
-    R_products -.->|catalog empty → fallback| S_flipkart
+    %% phase-2 live rows
+    R_products --> S_agg
 
     %% recommendations / cart / orders
     R_recs --> S_recs
@@ -91,13 +86,12 @@ flowchart TD
     R_orders --> S_otp
 
     %% services -> external
-    S_openrouter --> X_OR
-    S_agent --> X_OR
+    S_agent --> X_LLM
     S_gemini --> X_Gem
-    S_gemini -.->|fallback| X_OR
-    S_recs --> X_OR
+    S_gemini -.->|fallback| X_LLM
+    S_recs --> X_LLM
     S_salesforce --> X_SF
-    S_flipkart --> X_FK
+    S_live --> X_Store
     S_cart --> X_Vendor
     S_refresh --> X_Vendor
     S_otp --> X_Vendor
@@ -107,17 +101,30 @@ flowchart TD
 
 | System | Used by | Purpose |
 | --- | --- | --- |
-| **OpenRouter** (`/api/v1/chat/completions`) | `openrouter`, `agent`, `recommendations`, `gemini` (fallback) | Chat completions + tool calling |
+| **DeepSeek** (OpenRouter fallback) | `agent`, `cart` (name resolution), `gemini` (fallback) | Chat completions + tool calling for the agent loop |
 | **Google Gemini** (`generativelanguage.googleapis.com`) | `gemini` | Identify products from an uploaded image |
 | **Salesforce** (OAuth client-credentials + SOQL) | `salesforce` | Catalog of past purchases — `Grocery_Product__c` |
-| **Flipkart live search** (`search_product_flipkart_url`) | `flipkart_search` | Live results when the catalog search is empty |
+| **Flipkart / Amazon live search** (`SEARCH_PRODUCT_*_URL`) | `flipkart_search`, `amazon_search` | Live store rows for sources the catalog didn't cover |
 | **Vendor automation webhooks** | `cart`, `refresh`, `otp` | Cart checkout, order refresh, OTP submission |
+
+## Deployment
+
+The app deploys to **Cloudflare Workers** (`worker/` — Hono + `@langchain/langgraph`,
+TypeScript): same `/api/*` contract, SPA served as Workers static assets. Live at
+`https://price-compare.nit4infy1.workers.dev`.
+
+Workers can't run the Python app (V8 isolates — no `uvicorn` / native
+`pydantic-core`/`orjson`/langgraph wheels), so `worker/` is a TypeScript
+reimplementation with behavioral parity. It bundles to ~490 KiB gzipped. Cross-turn
+agent state is KV-backed there (no in-process checkpointer on ephemeral isolates).
+The Python `backend/` remains the reference implementation and local-dev server;
+it is not deployed.
 
 ## Notes
 
-- In Docker, FastAPI also serves the built SPA from `dist/` (see `main.py`); in
-  local dev the Vite dev server proxies `/api/*` to the backend.
-- The `otp <number>` path in `chat.py` is handled deterministically **before**
+- In local dev the Vite dev server proxies `/api/*` to the backend (`:8000` for
+  the Python app, or run `worker && pnpm dev` to serve API + built SPA on `:8787`).
+- The `otp <number>` path in `agent.py` is handled deterministically **before**
   the LLM, so the model never sees or invents OTP codes.
 - `product_search` is pure ranking/grouping logic — it has no external calls; it
   shapes Salesforce (and image-identify) records into the response.

@@ -1,17 +1,12 @@
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
-from app.routers import agent, cart, chat, identify, orders, products, recommendations
-
-# Resolved once at import time: works in Docker (/app/dist) and is absent in local dev
-_DIST_DIR = Path(__file__).parent.parent / "dist"
+from app.routers import agent, cart, identify, orders, products, recommendations
 
 
 @asynccontextmanager
@@ -47,19 +42,12 @@ def create_app() -> FastAPI:
             content={"detail": "An unexpected error occurred. Please try again."},
         )
 
-    # API routes must be registered before the static-files catch-all
     app.include_router(agent.router, prefix="/api")
-    app.include_router(chat.router, prefix="/api")
     app.include_router(identify.router, prefix="/api")
     app.include_router(products.router, prefix="/api")
     app.include_router(recommendations.router, prefix="/api")
     app.include_router(cart.router, prefix="/api")
     app.include_router(orders.router, prefix="/api")
-
-    # Serve the React build when the dist/ directory exists (i.e. inside Docker).
-    # In local dev the Vite dev server handles the frontend, so this is intentionally skipped.
-    if _DIST_DIR.is_dir():
-        app.mount("/", StaticFiles(directory=str(_DIST_DIR), html=True), name="frontend")
 
     return app
 

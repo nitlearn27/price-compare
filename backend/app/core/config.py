@@ -28,6 +28,20 @@ class Settings(BaseSettings):
     agent_token_budget: int = 20000  # stop looping once cumulative usage exceeds this
     agent_max_tool_calls_per_step: int = 4
     agent_history_limit: int = 30  # cap items returned by get_purchase_history
+    agent_validate_relevance: bool = True  # LLM semantic relevance pass over results
+
+    # LangGraph checkpointer for cross-turn conversation state. "memory" =
+    # in-process MemorySaver (state is per-process and lost on restart/spin-down —
+    # fine for a warm process, but gone whenever the host recycles the process).
+    # "none" disables persistence (every turn is stateless, as before).
+    agent_checkpointer: str = "memory"
+
+    # LangSmith tracing (optional). When langchain_api_key is set, these are
+    # exported to os.environ at graph build so LangChain/LangGraph pick them up.
+    langchain_tracing_v2: bool = False
+    langchain_api_key: str = ""
+    langchain_project: str = "price-compare"
+    langchain_endpoint: str = ""
 
     # Hub-spoke aggregator — per-spoke wall-clock timeout (seconds). A slow source
     # is dropped after this so it can't block the others. Live store scrapes

@@ -53,28 +53,34 @@ def _norm(value: float | None, lo: float | None, hi: float | None, invert: bool 
 def rank_by_value(
     listings: list[ProductListing], limit: int, query: str = ""
 ) -> list[ProductListing]:
-    """Rank live listings relevance-first, then by a composite value score, and
-    keep the best ``limit``. Live keyword search returns nearby items (a "carrot"
-    search also brings tomato, beetroot…), so titles that actually match the query
-    float to the top; the rest follow as alternatives ranked by value."""
-    if len(listings) <= 1:
-        return listings[:limit]
+    """Drop listings the query doesn't match, then rank the rest relevance-first and
+    by a composite value score, keeping the best ``limit``. Live keyword search
+    returns nearby items (a "butter" search also brings curd, paneer…); rows that
+    don't actually match the query are removed rather than shown as alternatives."""
+    from app.services.product_search import (
+        filter_relevant,
+        query_tokens,
+        relevance_of_title,
+    )
 
-    prices = [p.current_price for p in listings if p.current_price is not None]
-    ratings = [r for r in (_parse_rating(p.rating) for p in listings) if r is not None]
-    discounts = [p.discount for p in listings if p.discount is not None]
-    reviews = [p.review_count for p in listings if p.review_count is not None]
+    filtered = filter_relevant(listings, query) if query else listings
+    if len(filtered) <= 1:
+        return filtered[:limit]
+
+    prices = [p.current_price for p in filtered if p.current_price is not None]
+    ratings = [r for r in (_parse_rating(p.rating) for p in filtered) if r is not None]
+    discounts = [p.discount for p in filtered if p.discount is not None]
+    reviews = [p.review_count for p in filtered if p.review_count is not None]
 
     p_lo, p_hi = (min(prices), max(prices)) if prices else (None, None)
     r_lo, r_hi = (min(ratings), max(ratings)) if ratings else (None, None)
     d_lo, d_hi = (min(discounts), max(discounts)) if discounts else (None, None)
     v_lo, v_hi = (min(reviews), max(reviews)) if reviews else (None, None)
 
-    tokens = [t for t in query.lower().split() if len(t) >= 2]
+    tokens = query_tokens(query)
 
     def relevance(p: ProductListing) -> int:
-        title = (p.title or "").lower()
-        return 1 if any(t in title for t in tokens) else 0
+        return relevance_of_title(p.title or "", tokens)
 
     def value(p: ProductListing) -> float:
         return (
@@ -84,7 +90,7 @@ def rank_by_value(
             + _W_REVIEWS * _norm(p.review_count, v_lo, v_hi)
         )
 
-    return sorted(listings, key=lambda p: (relevance(p), value(p)), reverse=True)[:limit]
+    return sorted(filtered, key=lambda p: (relevance(p), value(p)), reverse=True)[:limit]
 
 
 def _match_history(title: str, history: dict) -> ProductListing | None:

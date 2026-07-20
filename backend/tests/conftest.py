@@ -24,6 +24,9 @@ def override_settings(monkeypatch):
         sf_api_version="57.0",
         sf_query_limit=200,
         sf_results_per_source=3,
+        # Loop/guardrail tests assert exact LLM call counts; the relevance pass adds
+        # a call. Off by default here; the dedicated validate tests enable it.
+        agent_validate_relevance=False,
         openrouter_api_key="test_openrouter_key",
         openrouter_model="openai/gpt-4o",
         deepseek_api_key="test_deepseek_key",
@@ -46,12 +49,10 @@ def override_settings(monkeypatch):
     # Patch settings in all service modules that cache it
     import app.routers.products as rp_mod
     import app.services.cart as cart_mod
-    import app.services.openrouter as or_mod
     import app.services.product_search as ps_mod  # noqa: F401
     import app.services.salesforce as sf_mod
 
     sf_mod.salesforce_client._settings = test_settings
-    or_mod.openrouter_client._settings = test_settings
     monkeypatch.setattr(cart_mod, "get_settings", lambda: test_settings)
     rp_mod  # imported to ensure patching chain works
 

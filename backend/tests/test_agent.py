@@ -39,6 +39,27 @@ def text_response(content: str) -> dict:
     return {"choices": [{"message": {"role": "assistant", "content": content}}]}
 
 
+def tool_call(name: str, args: dict, cid: str = "c1") -> dict:
+    return {
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [
+                        {
+                            "id": cid,
+                            "type": "function",
+                            "function": {"name": name, "arguments": json.dumps(args)},
+                        }
+                    ],
+                }
+            }
+        ],
+        "usage": {"total_tokens": 0},
+    }
+
+
 def make_agent():
     import app.core.config as cfg
 
@@ -246,3 +267,142 @@ async def test_checkout_confirmed_submits_and_clears_cart(monkeypatch):
     assert out["status"] == "ordered"
     assert ckout.submitted == 1
     assert cart == {}  # cleared after a successful order
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_stream_emits_status_results_reply_done(monkeypatch, happy_path_records):
+    """The SSE stream surfaces the loop's progress: a status when a tool runs,
+    the results as the search lands, the reply, then a terminal `done` snapshot."""
+    from app.services.product_search import rank_and_group
+
+    stub_aggregator(monkeypatch, rank_and_group(happy_path_records, "x", 3))
+    respx.post(DEEPSEEK_URL).mock(
+        side_effect=[
+            httpx.Response(200, json=search_call("pen drive")),
+            httpx.Response(200, json=text_response("Best value is the Flipkart one.")),
+        ]
+    )
+
+    agent = make_agent()
+    events = [ev async for ev in agent.run_stream([ChatMessage(role="user", content="pen drive")])]
+    names = [name for name, _ in events]
+
+    assert names[0] == "status"  # "Searching the catalog…" before the tool runs
+    assert "results" in names
+    assert "reply" in names
+    assert names[-1] == "done"
+
+    done = next(data for name, data in events if name == "done")
+    assert done["reply"] == "Best value is the Flipkart one."
+    assert len(done["results"]) > 0
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_cart_persists_across_turns(monkeypatch):
+    """With a thread_id, the checkpointer keeps the cart between turns: an item
+    added in turn 1 is still there to check out in turn 2 (the headline fix — the
+    old stateless loop rebuilt an empty cart every request)."""
+    from app.services import agent as agent_mod
+
+    submitted: dict = {}
+
+    async def fake_submit(products):
+        submitted["products"] = products
+        return CartCheckoutResponse(submitted=len(products), detail="Submitted 1 item(s).")
+
+    monkeypatch.setattr(agent_mod, "submit_cart", fake_submit)
+
+    respx.post(DEEPSEEK_URL).mock(
+        side_effect=[
+            # Turn 1: add an item, then reply.
+            httpx.Response(
+                200,
+                json=tool_call(
+                    "add_to_cart", {"items": [{"title": "Atta 5kg", "source": "Flipkart"}]}
+                ),
+            ),
+            httpx.Response(200, json=text_response("Added Atta 5kg to your cart.")),
+            # Turn 2 (same thread): confirmed checkout, then reply.
+            httpx.Response(200, json=tool_call("checkout", {"confirmed": True})),
+            httpx.Response(200, json=text_response("Order placed.")),
+        ]
+    )
+
+    agent = make_agent()
+
+    r1 = await agent.run([ChatMessage(role="user", content="add atta")], thread_id="t1")
+    assert r1.thread_id == "t1"
+    assert [c.name for c in r1.cart] == ["Atta 5kg"]
+
+    # New turn sends ONLY the latest user message — history + cart come from state.
+    r2 = await agent.run([ChatMessage(role="user", content="yes, order it")], thread_id="t1")
+
+    # The item added in turn 1 survived into turn 2 and was submitted.
+    assert submitted["products"] == [{"name": "Atta 5kg", "source": "Flipkart"}]
+    assert r2.checkout is not None and r2.checkout.submitted == 1
+    assert r2.cart == []  # cleared after the order
+
+
+# ── validate node (semantic relevance pass) ──────────────────────────────────
+
+# Three rows all containing "butter" (so the deterministic filter keeps them); the
+# validate pass then drops the non-butter row.
+_BUTTER_RECORDS = [
+    {"Id": "1", "Title__c": "Amul Butter 500g", "Source__c": "Flipkart"},
+    {"Id": "2", "Title__c": "Nandini Butter 100g", "Source__c": "Flipkart"},
+    {"Id": "3", "Title__c": "Butter Chicken Masala", "Source__c": "Flipkart"},
+]
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_validate_node_drops_irrelevant_rows(monkeypatch):
+    from app.services.product_search import rank_and_group
+
+    stub_aggregator(monkeypatch, rank_and_group(_BUTTER_RECORDS, "butter", 3))
+    respx.post(DEEPSEEK_URL).mock(
+        side_effect=[
+            httpx.Response(200, json=search_call("butter")),
+            httpx.Response(200, json=text_response("[0,1]")),  # keep Amul + Nandini
+            httpx.Response(200, json=text_response("Two good butters.")),
+        ]
+    )
+
+    agent = make_agent()
+    agent._settings.agent_validate_relevance = True
+    resp = await agent.run([ChatMessage(role="user", content="butter")])
+
+    assert [r.title for r in resp.results] == ["Amul Butter 500g", "Nandini Butter 100g"]
+    assert resp.reply == "Two good butters."
+    assert respx.calls.call_count == 3  # search + validate + final reply
+
+    # The reply-generation call (last) carries a relevance note listing ONLY the
+    # kept rows, so the model's prose table matches the grid.
+    final_body = respx.calls[-1].request.content.decode()
+    assert "Relevance filter applied" in final_body
+    assert "- Amul Butter 500g (Flipkart)" in final_body
+    assert "- Butter Chicken Masala" not in final_body
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_validate_node_fails_open_on_unparseable_reply(monkeypatch):
+    from app.services.product_search import rank_and_group
+
+    stub_aggregator(monkeypatch, rank_and_group(_BUTTER_RECORDS, "butter", 3))
+    respx.post(DEEPSEEK_URL).mock(
+        side_effect=[
+            httpx.Response(200, json=search_call("butter")),
+            httpx.Response(200, json=text_response("sorry, not sure")),  # no JSON array
+            httpx.Response(200, json=text_response("Here you go.")),
+        ]
+    )
+
+    agent = make_agent()
+    agent._settings.agent_validate_relevance = True
+    resp = await agent.run([ChatMessage(role="user", content="butter")])
+
+    assert len(resp.results) == 3  # unchanged — fail-open keeps the deterministic set
+    assert resp.reply == "Here you go."

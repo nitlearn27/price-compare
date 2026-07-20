@@ -1,0 +1,63 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "price-compare",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  // langchain / langgraph rely on Node built-ins (AsyncLocalStorage, etc.).
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // Serve the Vite build as static assets; /api/* runs the Worker first, all
+  // other paths fall back to index.html (SPA routing).
+  "assets": {
+    "directory": "../frontend/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  // Cross-turn agent state (conversation + cart across turns) is backed by KV on
+  // Workers — an in-process checkpointer would not survive between isolate
+  // invocations. This is OPTIONAL: without it the agent runs stateless (still
+  // fully functional). To enable persistence, run:
+  //   wrangler kv namespace create AGENT_STATE
+  // then uncomment the block below with the printed id.
+  "kv_namespaces": [{ "binding": "AGENT_STATE", "id": "d17fc8bf5f324c8fa6689de2cdcfd46a" }],
+
+  // Non-secret config (mirrors backend/.env.example defaults / render.yaml).
+  // Secrets (SF_TOKEN_URL, SF_CLIENT_ID, SF_CLIENT_SECRET, *_API_KEY) are NOT here —
+  // set them with `wrangler secret put` (see scripts/put-secrets.sh). SF_TOKEN_URL
+  // is treated as a secret to match render.yaml (it carries your org's My Domain).
+  "vars": {
+    "SF_API_VERSION": "60.0",
+    "SF_QUERY_LIMIT": "200",
+    "SF_RESULTS_PER_SOURCE": "3",
+    "OPENROUTER_MODEL": "openai/gpt-oss-120b",
+    "OPENROUTER_FALLBACK_MODEL": "openrouter/free",
+    "DEEPSEEK_MODEL": "deepseek-v4-flash",
+    "DEEPSEEK_BASE_URL": "https://api.deepseek.com/v1/chat/completions",
+    "GEMINI_MODEL": "gemini-2.5-flash",
+    "AGENT_MAX_STEPS": "6",
+    "AGENT_MAX_OUTPUT_TOKENS": "1024",
+    "AGENT_TOKEN_BUDGET": "20000",
+    "AGENT_MAX_TOOL_CALLS_PER_STEP": "4",
+    "AGENT_HISTORY_LIMIT": "30",
+    "AGENT_CHECKPOINTER": "kv",
+    "AGENT_VALIDATE_RELEVANCE": "true",
+    "AGGREGATOR_SPOKE_TIMEOUT": "90",
+    "AGGREGATOR_ENRICH_HISTORY": "true",
+    "AGGREGATOR_HISTORY_DAYS": "90",
+    "AGGREGATOR_MIN_CATALOG_RESULTS": "3",
+    "SEARCH_PRODUCT_FLIPKART_URL": "https://flipkart-scraper-production-d2de.up.railway.app/api/search",
+    "SEARCH_PRODUCT_AMAZON_URL": "https://amazon-scraper-production.up.railway.app/api/search",
+    "REFRESH_AMAZON_URL": "https://amazon-scraper-production.up.railway.app/api/products",
+    "REFRESH_FLIPKART_URL": "https://flipkart-scraper-production-d2de.up.railway.app/api/products",
+    "REFRESH_ORDERS": "2",
+    "RECOMMENDATION_API_URL": "https://insight-generation-production-3544.up.railway.app/api/insights/next-purchase",
+    "RECOMMENDATION_CACHE_TTL_SECONDS": "3600",
+    "FLIPKART_ADD_CART_URL": "https://flipkart-scraper-production-d2de.up.railway.app/api/cart",
+    "AMAZON_ADD_CART_URL": "https://amazon-scraper-production.up.railway.app/api/cart",
+    "OTP_API_URL": "https://amazon-fresh-history-production.up.railway.app/api/otp",
+    "CORS_ALLOW_ORIGINS": "*"
+  }
+}

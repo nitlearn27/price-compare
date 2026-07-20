@@ -43,11 +43,9 @@ export interface ProductListing {
 
 export interface ChatRequest {
   messages: ChatMessage[];
-}
-
-export interface ChatResponse {
-  reply: string;
-  product_query: ProductQuery | null;
+  /** When set, the server keeps conversation + cart state for this thread across
+   * turns; the client then sends only the newest turn. */
+  thread_id?: string | null;
 }
 
 export interface AgentCartItem {
@@ -69,6 +67,7 @@ export interface AgentResponse {
   cart: AgentCartItem[];
   checkout: CartCheckoutResponse | null;
   pending_live?: PendingLive | null;
+  thread_id?: string | null;
 }
 
 export interface ProductSearchResponse {

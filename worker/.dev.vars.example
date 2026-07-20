@@ -1,0 +1,9 @@
+# Local secrets for `wrangler dev`. Copy to `.dev.vars` and fill in.
+# Non-secret config lives in wrangler.jsonc `vars`. In production these are set
+# with `wrangler secret put <NAME>`.
+
+SF_CLIENT_ID=
+SF_CLIENT_SECRET=
+DEEPSEEK_API_KEY=
+OPENROUTER_API_KEY=
+GEMINI_API_KEY=

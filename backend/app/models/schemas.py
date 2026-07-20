@@ -47,11 +47,10 @@ class ProductListing(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(..., min_length=1)
-
-
-class ChatResponse(BaseModel):
-    reply: str
-    product_query: ProductQuery | None = None
+    # When set, the server keeps conversation + cart state for this thread across
+    # turns (LangGraph checkpointer); the client then sends only the newest turn.
+    # When absent, every turn is stateless and the client owns the full history.
+    thread_id: str | None = None
 
 
 class ProductSearchResponse(BaseModel):
@@ -115,6 +114,8 @@ class AgentResponse(BaseModel):
     cart: list[AgentCartItem] = []
     checkout: CartCheckoutResponse | None = None
     pending_live: PendingLive | None = None
+    # Echoed back so the client can persist it and continue the same thread.
+    thread_id: str | None = None
 
 
 class RefreshRequest(BaseModel):
